@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class PaymentController extends Controller
 {
@@ -20,7 +21,7 @@ class PaymentController extends Controller
         ]);
 
         $paymentGateway = app(\App\Interfaces\PaymentGatewayInterface::class);
-        
+
         $result = $paymentGateway->charge(
             $validated['amount'],
             $validated['customer_email'],
@@ -36,7 +37,7 @@ class PaymentController extends Controller
     public function verifyPayment(Request $request)
     {
         $reference = $request->query('reference');
-        
+
         if (!$reference) {
             return response()->json(['message' => 'No reference provided'], 400);
         }
@@ -53,7 +54,7 @@ class PaymentController extends Controller
     public function orderStatus(Request $request)
     {
         $reference = $request->query('reference');
-        
+
         if (!$reference) {
             return response()->json(['message' => 'No reference provided'], 400);
         }
@@ -66,6 +67,24 @@ class PaymentController extends Controller
             return response()->json(['message' => 'Order not found'], 404);
         }
 
+        // If still pending, verify with Paystack (handles webhook delays)
+        if ($order->status === 'pending') {
+            $paymentGateway = app(\App\Interfaces\PaymentGatewayInterface::class);
+            $verificationResult = $paymentGateway->verifyTransaction($reference);
+
+            if ($verificationResult['status'] === 'success') {
+                // Update order and invoice status
+                $order->update(['status' => 'confirmed']);
+                $order->invoice()->update(['payment_status' => 'paid']);
+
+                // Refresh order data
+                $order->refresh();
+                $order->load(['orderItems.menu', 'invoice']);
+
+                Log::info("Order {$reference} payment confirmed via status check (webhook delay)");
+            }
+        }
+
         return response()->json([
             'order' => $order,
             'payment_status' => $order->invoice->payment_status,
@@ -74,14 +93,70 @@ class PaymentController extends Controller
     }
 
     /**
+     * Payment callback endpoint (returns JSON)
+     */
+    public function paymentCallback(Request $request)
+    {
+        $reference = $request->query('reference') ?: $request->query('trxref');
+
+        if (!$reference) {
+            return response()->json(['message' => 'No reference provided'], 400);
+        }
+
+        $order = Order::where('order_number', $reference)
+            ->with(['orderItems.menu', 'invoice'])
+            ->first();
+
+        if (!$order) {
+            return response()->json(['message' => 'Order not found'], 404);
+        }
+
+        // If still pending, verify with Paystack (handles webhook delays)
+        if ($order->status === 'pending') {
+            $paymentGateway = app(\App\Interfaces\PaymentGatewayInterface::class);
+            $verificationResult = $paymentGateway->verifyTransaction($reference);
+
+            if ($verificationResult['status'] === 'success') {
+                // Update order and invoice status
+                $order->update(['status' => 'confirmed']);
+                $order->invoice()->update(['payment_status' => 'paid']);
+
+                // Send confirmation email
+                Mail::to($order->customer_email)->send(new \App\Mail\OrderPlaced($order));
+
+                // Refresh order data
+                $order->refresh();
+                $order->load(['orderItems.menu', 'invoice']);
+
+                Log::info("Order {$reference} payment confirmed via callback (webhook delay)");
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Payment callback received',
+            'order' => $order,
+            'payment_status' => $order->invoice->payment_status,
+            'order_status' => $order->status,
+            'reference' => $reference
+        ]);
+    }
+
+    /**
      * Paystack webhook handler
      */
     public function webhook(Request $request)
     {
+        // Log webhook received for debugging
+        Log::info('Webhook received', [
+            'headers' => $request->headers->all(),
+            'body' => $request->all()
+        ]);
+
         // Verify webhook signature
         $signature = $request->header('x-paystack-signature');
         $body = $request->getContent();
-        
+
         if (!$signature || hash_hmac('sha512', $body, config('services.paystack.secret_key')) !== $signature) {
             Log::warning('Invalid Paystack webhook signature');
             return response()->json(['message' => 'Invalid signature'], 400);
@@ -90,6 +165,8 @@ class PaymentController extends Controller
         $event = $request->input('event');
         $data = $request->input('data');
 
+        Log::info('Webhook event processed', ['event' => $event, 'reference' => $data['reference'] ?? 'N/A']);
+
         // Handle charge.success event
         if ($event === 'charge.success') {
             $reference = $data['reference'];
@@ -97,17 +174,19 @@ class PaymentController extends Controller
 
             // Find order by reference and update status
             $order = Order::where('order_number', $reference)->first();
-            
+
             if ($order && $status === 'success') {
                 $order->update(['status' => 'confirmed']);
-                
+
                 // Update invoice to paid
                 $order->invoice()->update(['payment_status' => 'paid']);
-                
+
                 // Send confirmation email
-                \Mail::to($order->customer_email)->send(new \App\Mail\OrderPlaced($order));
-                
+                Mail::to($order->customer_email)->send(new \App\Mail\OrderPlaced($order));
+
                 Log::info("Order {$reference} payment confirmed via webhook");
+            } else {
+                Log::warning("Order not found or status mismatch", ['reference' => $reference, 'status' => $status]);
             }
         }
 

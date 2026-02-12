@@ -37,6 +37,7 @@ Route::delete('/cart/{itemId}', [CartController::class, 'destroy']);
 Route::post('/payment/initialize', [PaymentController::class, 'initializePayment']);
 Route::get('/payment/verify', [PaymentController::class, 'verifyPayment']);
 Route::get('/payment/status', [PaymentController::class, 'orderStatus']);
+Route::get('/payment/callback', [PaymentController::class, 'paymentCallback']);
 Route::post('/payment/webhook', [PaymentController::class, 'webhook']);
 
 // Admin Protected Routes

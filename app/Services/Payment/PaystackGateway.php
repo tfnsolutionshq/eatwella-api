@@ -27,7 +27,7 @@ class PaystackGateway implements PaymentGatewayInterface
         $response = Http::withToken($this->secretKey)
             ->post('https://api.paystack.co/transaction/initialize', [
                 'email' => $email,
-                'amount' => $amount * 100, // Convert to kobo
+                'amount' => (int) ($amount * 100), // Convert to kobo as integer
                 'callback_url' => $data['callback_url'] ?? null,
             ]);
 

@@ -79,7 +79,7 @@ class CustomerController extends Controller
             } elseif (!empty($validated['items'])) {
                 $itemsToProcess = $validated['items'];
             }
-            
+
             if (empty($itemsToProcess)) {
                 throw new \Exception('No items to checkout.');
             }
@@ -130,7 +130,7 @@ class CustomerController extends Controller
             $paymentResult = $this->paymentGateway->charge(
                 $finalAmount,
                 $validated['customer_email'],
-                ['callback_url' => config('app.frontend_url') . '/payment-success']
+                ['callback_url' => config('app.url') . '/api/payment/callback']
             );
 
             if ($paymentResult['status'] === 'failed') {
