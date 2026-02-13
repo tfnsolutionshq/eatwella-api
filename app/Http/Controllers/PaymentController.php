@@ -17,16 +17,36 @@ class PaymentController extends Controller
         $validated = $request->validate([
             'customer_email' => 'required|email',
             'amount' => 'required|numeric|min:0',
-            'callback_url' => 'nullable|url'
+            'callback_url' => 'nullable|url',
+            'discount_code' => 'nullable|string'
         ]);
+
+        $finalAmount = $validated['amount'];
+        $discountAmount = 0;
+        $discountCode = null;
+
+        if (!empty($validated['discount_code'])) {
+            $discount = \App\Models\Discount::where('code', strtoupper($validated['discount_code']))->first();
+            
+            if ($discount && $discount->isValid()) {
+                $discountAmount = $discount->calculateDiscount($validated['amount']);
+                $finalAmount = max(0, $validated['amount'] - $discountAmount);
+                $discountCode = $discount->code;
+            }
+        }
 
         $paymentGateway = app(\App\Interfaces\PaymentGatewayInterface::class);
 
         $result = $paymentGateway->charge(
-            $validated['amount'],
+            $finalAmount,
             $validated['customer_email'],
             ['callback_url' => $validated['callback_url'] ?? null]
         );
+
+        $result['discount_applied'] = $discountCode;
+        $result['discount_amount'] = $discountAmount;
+        $result['original_amount'] = $validated['amount'];
+        $result['final_amount'] = $finalAmount;
 
         return response()->json($result);
     }

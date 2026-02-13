@@ -10,43 +10,43 @@
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             line-height: 1.6;
             color: #333;
             background-color: #f8f9fa;
         }
-        
+
         .container {
             max-width: 600px;
             margin: 0 auto;
             background-color: #ffffff;
             box-shadow: 0 0 20px rgba(0,0,0,0.1);
         }
-        
+
         .header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             padding: 40px 30px;
             text-align: center;
         }
-        
+
         .header h1 {
             font-size: 28px;
             margin-bottom: 10px;
             font-weight: 300;
         }
-        
+
         .header p {
             font-size: 16px;
             opacity: 0.9;
         }
-        
+
         .content {
             padding: 40px 30px;
         }
-        
+
         .order-info {
             background-color: #f8f9fa;
             padding: 25px;
@@ -54,13 +54,13 @@
             margin-bottom: 30px;
             border-left: 4px solid #667eea;
         }
-        
+
         .order-info h2 {
             color: #667eea;
             margin-bottom: 15px;
             font-size: 20px;
         }
-        
+
         .info-row {
             display: flex;
             justify-content: space-between;
@@ -68,18 +68,18 @@
             padding: 8px 0;
             border-bottom: 1px solid #e9ecef;
         }
-        
+
         .info-row:last-child {
             border-bottom: none;
             font-weight: bold;
             font-size: 18px;
             color: #28a745;
         }
-        
+
         .items-section {
             margin-bottom: 30px;
         }
-        
+
         .items-section h3 {
             color: #333;
             margin-bottom: 20px;
@@ -87,7 +87,7 @@
             border-bottom: 2px solid #667eea;
             padding-bottom: 10px;
         }
-        
+
         .item {
             display: flex;
             justify-content: space-between;
@@ -95,46 +95,46 @@
             padding: 15px 0;
             border-bottom: 1px solid #e9ecef;
         }
-        
+
         .item:last-child {
             border-bottom: none;
         }
-        
+
         .item-details {
             flex: 1;
         }
-        
+
         .item-name {
             font-weight: 600;
             color: #333;
             margin-bottom: 5px;
         }
-        
+
         .item-qty {
             color: #666;
             font-size: 14px;
         }
-        
+
         .item-price {
             font-weight: bold;
             color: #28a745;
             font-size: 16px;
         }
-        
+
         .total-section {
             background-color: #f8f9fa;
             padding: 25px;
             border-radius: 8px;
             margin-bottom: 30px;
         }
-        
+
         .total-row {
             display: flex;
             justify-content: space-between;
             margin-bottom: 10px;
             padding: 5px 0;
         }
-        
+
         .total-row.final {
             border-top: 2px solid #667eea;
             padding-top: 15px;
@@ -143,7 +143,7 @@
             font-weight: bold;
             color: #28a745;
         }
-        
+
         .status-badge {
             display: inline-block;
             padding: 8px 16px;
@@ -153,34 +153,34 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-        
+
         .status-confirmed {
             background-color: #d4edda;
             color: #155724;
         }
-        
+
         .status-pending {
             background-color: #fff3cd;
             color: #856404;
         }
-        
+
         .footer {
             background-color: #343a40;
             color: white;
             padding: 30px;
             text-align: center;
         }
-        
+
         .footer h3 {
             margin-bottom: 15px;
             color: #667eea;
         }
-        
+
         .footer p {
             margin-bottom: 10px;
             opacity: 0.8;
         }
-        
+
         .track-button {
             display: inline-block;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -192,31 +192,31 @@
             font-weight: bold;
             transition: transform 0.2s;
         }
-        
+
         .track-button:hover {
             transform: translateY(-2px);
         }
-        
+
         @media (max-width: 600px) {
             .container {
                 margin: 0;
                 box-shadow: none;
             }
-            
+
             .header, .content, .footer {
                 padding: 20px;
             }
-            
+
             .info-row, .total-row {
                 flex-direction: column;
                 align-items: flex-start;
             }
-            
+
             .item {
                 flex-direction: column;
                 align-items: flex-start;
             }
-            
+
             .item-price {
                 margin-top: 10px;
             }
@@ -227,10 +227,11 @@
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <h1>🍽️ EatWella</h1>
+            <img src="{{ asset('logo.jpg') }}" alt="EatWella" style="max-width: 150px; margin-bottom: 20px;">
+            <h1>Order Confirmed!</h1>
             <p>Thank you for your order!</p>
         </div>
-        
+
         <!-- Content -->
         <div class="content">
             <div class="order-info">
@@ -240,6 +241,18 @@
                     <span><strong>{{ $order->order_number }}</strong></span>
                 </div>
                 <div class="info-row">
+                    <span>Order Type:</span>
+                    <span><strong>{{ ucfirst($order->order_type) }}</strong></span>
+                </div>
+                <div class="info-row">
+                    <span>Payment Type:</span>
+                    <span><strong>{{ ucfirst($order->payment_type) }}</strong></span>
+                </div>
+                <div class="info-row">
+                    <span>Customer Name:</span>
+                    <span>{{ $order->customer_name }}</span>
+                </div>
+                <div class="info-row">
                     <span>Order Date:</span>
                     <span>{{ $order->created_at->format('M d, Y - h:i A') }}</span>
                 </div>
@@ -247,12 +260,28 @@
                     <span>Customer Email:</span>
                     <span>{{ $order->customer_email }}</span>
                 </div>
+                @if($order->order_type === 'dine' && $order->table_number)
+                <div class="info-row">
+                    <span>Table Number:</span>
+                    <span><strong>{{ $order->table_number }}</strong></span>
+                </div>
+                @endif
+                @if($order->order_type === 'delivery')
+                <div class="info-row">
+                    <span>Phone:</span>
+                    <span>{{ $order->customer_phone }}</span>
+                </div>
+                <div class="info-row">
+                    <span>Delivery Address:</span>
+                    <span>{{ $order->delivery_address }}, {{ $order->delivery_city }}, {{ $order->delivery_zip }}</span>
+                </div>
+                @endif
                 <div class="info-row">
                     <span>Status:</span>
                     <span class="status-badge status-{{ $order->status }}">{{ ucfirst($order->status) }}</span>
                 </div>
             </div>
-            
+
             <!-- Order Items -->
             <div class="items-section">
                 <h3>📋 Order Items</h3>
@@ -266,7 +295,7 @@
                 </div>
                 @endforeach
             </div>
-            
+
             <!-- Total Section -->
             <div class="total-section">
                 <div class="total-row">
@@ -275,7 +304,7 @@
                 </div>
                 @if($order->discount_amount > 0)
                 <div class="total-row">
-                    <span>Discount:</span>
+                    <span>Discount ({{ $order->discount_code }}):</span>
                     <span style="color: #28a745;">-₦{{ number_format($order->discount_amount, 2) }}</span>
                 </div>
                 @endif
@@ -284,21 +313,21 @@
                     <span>₦{{ number_format($order->final_amount, 2) }}</span>
                 </div>
             </div>
-            
+
             <!-- Track Order Button -->
             <div style="text-align: center;">
-                <a href="https://eatwella.tfnsolutions.us/api/orders/track/{{ $order->order_number }}" class="track-button">
+                <a href="https://eatwella.tfnsolutions.us/orders/track/{{ $order->order_number }}" class="track-button">
                     📱 Track Your Order
                 </a>
             </div>
         </div>
-        
+
         <!-- Footer -->
         <div class="footer">
-            <h3>🍽️ EatWella</h3>
+            <img src="{{ asset('logo.jpg') }}" alt="EatWella" style="max-width: 120px; margin-bottom: 15px; opacity: 0.9;">
             <p>Delicious meals delivered to your doorstep</p>
             <p>Thank you for choosing EatWella!</p>
-            <p style="font-size: 12px; margin-top: 20px;">
+            <p style="font-size: 12px; margin-top: 20px; opacity: 0.6;">
                 This is an automated email. Please do not reply to this message.
             </p>
         </div>

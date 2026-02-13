@@ -32,6 +32,14 @@ Route::get('/cart', [CartController::class, 'index']);
 Route::post('/cart', [CartController::class, 'store']);
 Route::put('/cart/{itemId}', [CartController::class, 'update']);
 Route::delete('/cart/{itemId}', [CartController::class, 'destroy']);
+Route::post('/cart/apply-discount', [CartController::class, 'applyDiscount']);
+Route::delete('/cart/remove-discount', [CartController::class, 'removeDiscount']);
+
+// Discount Validation (Public)
+Route::post('/discounts/validate', [DiscountController::class, 'validateCode']);
+
+// Category
+Route::get('/categories', [CategoryController::class, 'index']);
 
 // Payment Routes (Public/Guest)
 Route::post('/payment/initialize', [PaymentController::class, 'initializePayment']);

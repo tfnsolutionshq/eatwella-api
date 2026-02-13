@@ -17,15 +17,15 @@ class CartController extends Controller
         // For API (stateful or stateless), if we want to rely on Laravel session:
         // Ensure 'EnsureFrontendRequestsAreStateful' or 'StartSession' middleware is active.
         // Or simply use the session ID from the request if available, or a custom header if stateless.
-        
+
         // However, for pure API without cookies, we might still need a client-generated ID
         // OR we return a session ID on first response and expect client to send it back.
-        
+
         // But the user requested: "Use $request->session()->getId()"
         // This implies the environment supports sessions (e.g. web middleware group or similar).
         // If this is an API route, sessions might not be started by default in Laravel 11/12 API group.
         // We will assume sessions are enabled or we enable them.
-        
+
         // Let's use the session() helper. If it's null, we fallback or throw.
         return $request->session()->getId();
     }
@@ -88,8 +88,17 @@ class CartController extends Controller
         ]);
 
         $sessionId = $this->getSessionId($request);
-        $cart = Cart::where('session_id', $sessionId)->firstOrFail();
-        $item = $cart->items()->where('id', $itemId)->firstOrFail();
+        $cart = Cart::where('session_id', $sessionId)->first();
+        
+        if (!$cart) {
+            return response()->json(['message' => 'Cart not found'], 404);
+        }
+        
+        $item = $cart->items()->where('id', $itemId)->first();
+        
+        if (!$item) {
+            return response()->json(['message' => 'Item not found in cart'], 404);
+        }
 
         $item->update(['quantity' => $validated['quantity']]);
 
@@ -102,11 +111,73 @@ class CartController extends Controller
     public function destroy(Request $request, $itemId)
     {
         $sessionId = $this->getSessionId($request);
-        $cart = Cart::where('session_id', $sessionId)->firstOrFail();
-        $item = $cart->items()->where('id', $itemId)->firstOrFail();
+        $cart = Cart::where('session_id', $sessionId)->first();
+        
+        if (!$cart) {
+            return response()->json(['message' => 'Cart not found'], 404);
+        }
+        
+        $item = $cart->items()->where('id', $itemId)->first();
+        
+        if (!$item) {
+            return response()->json(['message' => 'Item not found in cart'], 404);
+        }
 
         $item->delete();
 
         return response()->json($cart->load('items.menu'));
     }
+
+
+    /**
+     * Apply discount code to cart.
+     */
+    public function applyDiscount(Request $request)
+    {
+        $request->validate(['code' => 'required|string']);
+
+        $sessionId = $this->getSessionId($request);
+        $cart = Cart::where('session_id', $sessionId)->first();
+        
+        if (!$cart) {
+            return response()->json(['message' => 'Cart is empty'], 404);
+        }
+
+        $discount = \App\Models\Discount::where('code', strtoupper($request->code))->first();
+
+        if (!$discount || !$discount->isValid()) {
+            return response()->json(['message' => 'Invalid or expired discount code'], 400);
+        }
+
+        $cart->discount_code = $discount->code;
+        $cart->save();
+
+        return response()->json([
+            'message' => 'Discount applied successfully',
+            'cart' => $cart->load('items.menu'),
+            'discount' => $discount
+        ]);
+    }
+
+    /**
+     * Remove discount from cart.
+     */
+    public function removeDiscount(Request $request)
+    {
+        $sessionId = $this->getSessionId($request);
+        $cart = Cart::where('session_id', $sessionId)->first();
+        
+        if (!$cart) {
+            return response()->json(['message' => 'Cart not found'], 404);
+        }
+
+        $cart->discount_code = null;
+        $cart->save();
+
+        return response()->json([
+            'message' => 'Discount removed',
+            'cart' => $cart->load('items.menu')
+        ]);
+    }
+
 }

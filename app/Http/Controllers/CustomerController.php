@@ -57,7 +57,15 @@ class CustomerController extends Controller
     public function checkout(Request $request)
     {
         $validated = $request->validate([
+            'order_type' => 'required|in:dine,pickup,delivery',
+            'payment_type' => 'required|in:cash,gateway',
+            'customer_name' => 'required|string|max:255',
             'customer_email' => 'required|email',
+            'customer_phone' => 'required_if:order_type,delivery|nullable|string',
+            'table_number' => 'required_if:order_type,dine|nullable|string',
+            'delivery_address' => 'required_if:order_type,delivery|nullable|string',
+            'delivery_city' => 'required_if:order_type,delivery|nullable|string',
+            'delivery_zip' => 'required_if:order_type,delivery|nullable|string',
             'items' => 'nullable|array',
             'items.*.menu_id' => 'required_with:items|exists:menus,id',
             'items.*.quantity' => 'required_with:items|integer|min:1',
@@ -105,46 +113,66 @@ class CustomerController extends Controller
                 ];
             }
 
-            // Apply Discount
+            // Apply Discount from Cart
             $discountAmount = 0;
-            $activeDiscount = Discount::where('is_active', true)
-                ->where('start_date', '<=', now())
-                ->where(function ($query) {
-                    $query->whereNull('end_date')
-                          ->orWhere('end_date', '>=', now());
-                })
-                ->orderBy('value', 'desc')
-                ->first();
-
-            if ($activeDiscount) {
-                if ($activeDiscount->type === 'percentage') {
-                    $discountAmount = $totalAmount * ($activeDiscount->value / 100);
-                } else {
-                    $discountAmount = min($activeDiscount->value, $totalAmount);
+            $discountCode = null;
+            
+            if ($cart && $cart->discount_code) {
+                $discount = \App\Models\Discount::where('code', $cart->discount_code)->first();
+                
+                if ($discount && $discount->isValid()) {
+                    $discountAmount = $discount->calculateDiscount($totalAmount);
+                    $discountCode = $discount->code;
+                    
+                    // Increment usage count
+                    $discount->increment('used_count');
                 }
             }
 
             $finalAmount = $totalAmount - $discountAmount;
 
-            // Initialize Payment with Paystack
-            $paymentResult = $this->paymentGateway->charge(
-                $finalAmount,
-                $validated['customer_email'],
-                ['callback_url' => config('app.url') . '/api/payment/callback']
-            );
+            // Handle payment based on payment type
+            if ($validated['payment_type'] === 'gateway') {
+                // Initialize Payment with Paystack
+                $paymentResult = $this->paymentGateway->charge(
+                    $finalAmount,
+                    $validated['customer_email'],
+                    ['callback_url' => config('app.url') . '/api/payment/callback']
+                );
 
-            if ($paymentResult['status'] === 'failed') {
-                throw new \Exception('Payment initialization failed: ' . ($paymentResult['message'] ?? 'Unknown error'));
+                if ($paymentResult['status'] === 'failed') {
+                    throw new \Exception('Payment initialization failed: ' . ($paymentResult['message'] ?? 'Unknown error'));
+                }
+
+                $orderNumber = $paymentResult['reference'];
+                $orderStatus = 'pending';
+                $paymentStatus = 'unpaid';
+                $paymentMethod = 'paystack';
+            } else {
+                // Cash payment
+                $orderNumber = 'ORD-' . strtoupper(Str::random(10));
+                $orderStatus = 'confirmed';
+                $paymentStatus = 'pending';
+                $paymentMethod = 'cash';
             }
 
-            // Create Order with PENDING status
+            // Create Order
             $order = Order::create([
-                'order_number' => $paymentResult['reference'],
+                'order_number' => $orderNumber,
+                'order_type' => $validated['order_type'],
+                'payment_type' => $validated['payment_type'],
                 'customer_email' => $validated['customer_email'],
+                'customer_name' => $validated['customer_name'],
+                'customer_phone' => $validated['customer_phone'] ?? null,
+                'table_number' => $validated['table_number'] ?? null,
+                'delivery_address' => $validated['delivery_address'] ?? null,
+                'delivery_city' => $validated['delivery_city'] ?? null,
+                'delivery_zip' => $validated['delivery_zip'] ?? null,
                 'total_amount' => $totalAmount,
                 'discount_amount' => $discountAmount,
+                'discount_code' => $discountCode,
                 'final_amount' => $finalAmount,
-                'status' => 'pending' // Admin won't see it yet
+                'status' => $orderStatus
             ]);
 
             // Create Order Items
@@ -152,13 +180,13 @@ class CustomerController extends Controller
                 $order->orderItems()->create($data);
             }
 
-            // Create Invoice with UNPAID status
+            // Create Invoice
             $invoice = Invoice::create([
                 'order_id' => $order->id,
                 'invoice_number' => 'INV-' . strtoupper(Str::random(10)),
                 'amount' => $finalAmount,
-                'payment_status' => 'unpaid',
-                'payment_method' => 'paystack'
+                'payment_status' => $paymentStatus,
+                'payment_method' => $paymentMethod
             ]);
 
             // Clear Cart
@@ -166,14 +194,27 @@ class CustomerController extends Controller
                 $cart->delete();
             }
 
-            return response()->json([
-                'message' => 'Order created, proceed to payment',
-                'order' => $order->load('orderItems', 'invoice'),
-                'payment' => [
+            // Send email for cash orders
+            if ($validated['payment_type'] === 'cash') {
+                Mail::to($order->customer_email)->send(new OrderPlaced($order));
+            }
+
+            // Prepare response
+            $response = [
+                'message' => $validated['payment_type'] === 'cash' 
+                    ? 'Order placed successfully' 
+                    : 'Order created, proceed to payment',
+                'order' => $order->load('orderItems', 'invoice')
+            ];
+
+            if ($validated['payment_type'] === 'gateway') {
+                $response['payment'] = [
                     'authorization_url' => $paymentResult['authorization_url'],
                     'reference' => $paymentResult['reference']
-                ]
-            ], 201);
+                ];
+            }
+
+            return response()->json($response, 201);
         });
     }
 
