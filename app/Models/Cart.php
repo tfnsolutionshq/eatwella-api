@@ -12,6 +12,8 @@ class Cart extends Model
 
     protected $fillable = ['session_id', 'discount_code'];
 
+    protected $appends = ['subtotal', 'discount_amount', 'total', 'total_items'];
+
     public function items(): HasMany
     {
         return $this->hasMany(CartItem::class);
@@ -42,5 +44,10 @@ class Cart extends Model
     public function getTotalAttribute()
     {
         return max(0, $this->subtotal - $this->discount_amount);
+    }
+
+    public function getTotalItemsAttribute()
+    {
+        return $this->items->sum('quantity');
     }
 }
