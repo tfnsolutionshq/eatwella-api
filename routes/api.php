@@ -8,9 +8,12 @@ use App\Http\Controllers\MenuController;
 use App\Http\Controllers\DiscountController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\CustomerAuthController;
+use App\Http\Controllers\AddressController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\Admin\AnalyticsController;
+use App\Http\Controllers\Admin\UserController;
 
 /*
 |--------------------------------------------------------------------------
@@ -21,13 +24,17 @@ use App\Http\Controllers\Admin\AnalyticsController;
 // Public Routes
 Route::post('/login', [AuthController::class, 'login']);
 
+// Customer Auth Routes
+Route::post('/customer/register', [CustomerAuthController::class, 'register']);
+Route::post('/customer/login', [CustomerAuthController::class, 'login']);
+
 // Customer / Guest Routes
 Route::get('/menus', [CustomerController::class, 'listMenus']);
 Route::get('/menus/{menu}', [CustomerController::class, 'showMenu']);
 Route::post('/checkout', [CustomerController::class, 'checkout']);
 Route::get('/orders/track/{order_number}', [CustomerController::class, 'trackOrder']);
 
-// Cart Routes (Public/Guest)
+// Cart Routes (Public/Guest + Authenticated) - supports both
 Route::get('/cart', [CartController::class, 'index']);
 Route::post('/cart', [CartController::class, 'store']);
 Route::put('/cart/{itemId}', [CartController::class, 'update']);
@@ -55,10 +62,32 @@ Route::middleware('auth:sanctum')->group(function () {
         return $request->user();
     });
 
+    // Customer Dashboard Routes
+    Route::prefix('customer')->group(function () {
+        Route::get('/profile', [CustomerAuthController::class, 'profile']);
+        Route::put('/profile', [CustomerAuthController::class, 'updateProfile']);
+        Route::get('/overview', [CustomerAuthController::class, 'overview']);
+        Route::get('/orders', [CustomerAuthController::class, 'recentOrders']);
+        
+        Route::get('/addresses', [AddressController::class, 'index']);
+        Route::post('/addresses', [AddressController::class, 'store']);
+        Route::put('/addresses/{address}', [AddressController::class, 'update']);
+        Route::delete('/addresses/{address}', [AddressController::class, 'destroy']);
+        
+        Route::put('/change-password', [CustomerAuthController::class, 'changePassword']);
+        Route::delete('/delete-account', [CustomerAuthController::class, 'deleteAccount']);
+        
+        Route::post('/logout', [CustomerAuthController::class, 'logout']);
+    });
+
     // Admin Resources
     Route::apiResource('admin/categories', CategoryController::class);
     Route::apiResource('admin/menus', MenuController::class);
     Route::apiResource('admin/discounts', DiscountController::class);
+
+    // Registered Users Management
+    Route::get('/admin/users', [UserController::class, 'index']);
+    Route::get('/admin/users/{user}', [UserController::class, 'show']);
 
     // Order Management
     Route::get('/admin/orders', [OrderController::class, 'index']);

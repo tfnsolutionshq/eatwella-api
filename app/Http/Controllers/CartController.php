@@ -14,6 +14,10 @@ class CartController extends Controller
      */
     protected function getCartId(Request $request)
     {
+        // If user is authenticated, use user_id, otherwise use X-Cart-ID header
+        if ($request->user()) {
+            return null; // Will use user_id instead
+        }
         return $request->header('X-Cart-ID');
     }
 
@@ -22,12 +26,15 @@ class CartController extends Controller
      */
     public function index(Request $request)
     {
-        $cartId = $this->getCartId($request);
-        if (!$cartId) {
-            return response()->json(['items' => []]);
+        if ($request->user()) {
+            $cart = Cart::with('items.menu')->where('user_id', $request->user()->id)->first();
+        } else {
+            $cartId = $this->getCartId($request);
+            if (!$cartId) {
+                return response()->json(['items' => []]);
+            }
+            $cart = Cart::with('items.menu')->where('session_id', $cartId)->first();
         }
-
-        $cart = Cart::with('items.menu')->where('session_id', $cartId)->first();
 
         if (!$cart) {
             return response()->json(['items' => []]);
@@ -51,12 +58,18 @@ class CartController extends Controller
             return response()->json(['message' => 'Menu unavailable'], 422);
         }
 
-        $cartId = $this->getCartId($request);
-        if (!$cartId) {
-            return response()->json(['message' => 'X-Cart-ID header required'], 400);
+        // Check if user is authenticated via Bearer token
+        $user = auth('sanctum')->user();
+        
+        if ($user) {
+            $cart = Cart::firstOrCreate(['user_id' => $user->id]);
+        } else {
+            $cartId = $request->header('X-Cart-ID');
+            if (!$cartId) {
+                return response()->json(['message' => 'X-Cart-ID header required'], 400);
+            }
+            $cart = Cart::firstOrCreate(['session_id' => $cartId]);
         }
-
-        $cart = Cart::firstOrCreate(['session_id' => $cartId]);
 
         $cartItem = $cart->items()->where('menu_id', $validated['menu_id'])->first();
 
@@ -82,12 +95,15 @@ class CartController extends Controller
             'quantity' => 'required|integer|min:1',
         ]);
 
-        $cartId = $this->getCartId($request);
-        if (!$cartId) {
-            return response()->json(['message' => 'X-Cart-ID header required'], 400);
+        if ($request->user()) {
+            $cart = Cart::where('user_id', $request->user()->id)->first();
+        } else {
+            $cartId = $this->getCartId($request);
+            if (!$cartId) {
+                return response()->json(['message' => 'X-Cart-ID header required'], 400);
+            }
+            $cart = Cart::where('session_id', $cartId)->first();
         }
-
-        $cart = Cart::where('session_id', $cartId)->first();
         
         if (!$cart) {
             return response()->json(['message' => 'Cart not found'], 404);
@@ -109,12 +125,15 @@ class CartController extends Controller
      */
     public function destroy(Request $request, $itemId)
     {
-        $cartId = $this->getCartId($request);
-        if (!$cartId) {
-            return response()->json(['message' => 'X-Cart-ID header required'], 400);
+        if ($request->user()) {
+            $cart = Cart::where('user_id', $request->user()->id)->first();
+        } else {
+            $cartId = $this->getCartId($request);
+            if (!$cartId) {
+                return response()->json(['message' => 'X-Cart-ID header required'], 400);
+            }
+            $cart = Cart::where('session_id', $cartId)->first();
         }
-
-        $cart = Cart::where('session_id', $cartId)->first();
         
         if (!$cart) {
             return response()->json(['message' => 'Cart not found'], 404);
@@ -139,12 +158,15 @@ class CartController extends Controller
     {
         $request->validate(['code' => 'required|string']);
 
-        $cartId = $this->getCartId($request);
-        if (!$cartId) {
-            return response()->json(['message' => 'X-Cart-ID header required'], 400);
+        if ($request->user()) {
+            $cart = Cart::where('user_id', $request->user()->id)->first();
+        } else {
+            $cartId = $this->getCartId($request);
+            if (!$cartId) {
+                return response()->json(['message' => 'X-Cart-ID header required'], 400);
+            }
+            $cart = Cart::where('session_id', $cartId)->first();
         }
-
-        $cart = Cart::where('session_id', $cartId)->first();
         
         if (!$cart) {
             return response()->json(['message' => 'Cart is empty'], 404);
@@ -171,12 +193,15 @@ class CartController extends Controller
      */
     public function removeDiscount(Request $request)
     {
-        $cartId = $this->getCartId($request);
-        if (!$cartId) {
-            return response()->json(['message' => 'X-Cart-ID header required'], 400);
+        if ($request->user()) {
+            $cart = Cart::where('user_id', $request->user()->id)->first();
+        } else {
+            $cartId = $this->getCartId($request);
+            if (!$cartId) {
+                return response()->json(['message' => 'X-Cart-ID header required'], 400);
+            }
+            $cart = Cart::where('session_id', $cartId)->first();
         }
-
-        $cart = Cart::where('session_id', $cartId)->first();
         
         if (!$cart) {
             return response()->json(['message' => 'Cart not found'], 404);

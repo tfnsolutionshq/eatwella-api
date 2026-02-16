@@ -11,7 +11,7 @@ class OrderController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Order::with('orderItems.menu');
+        $query = Order::with(['orderItems.menu', 'user.addresses']);
 
         if ($request->has('status')) {
             $query->where('status', $request->status);
@@ -22,7 +22,7 @@ class OrderController extends Controller
 
     public function show(Order $order)
     {
-        return $order->load(['orderItems.menu', 'invoice']);
+        return $order->load(['orderItems.menu', 'invoice', 'user.addresses']);
     }
 
     public function update(Request $request, Order $order)

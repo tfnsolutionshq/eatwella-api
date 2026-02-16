@@ -56,26 +56,57 @@ class CustomerController extends Controller
 
     public function checkout(Request $request)
     {
-        $validated = $request->validate([
+        $user = auth('sanctum')->user();
+        
+        $rules = [
             'order_type' => 'required|in:dine,pickup,delivery',
             'payment_type' => 'required|in:cash,gateway',
-            'customer_name' => 'required|string|max:255',
-            'customer_email' => 'required|email',
-            'customer_phone' => 'required_if:order_type,delivery|nullable|string',
-            'table_number' => 'required_if:order_type,dine|nullable|string',
-            'delivery_address' => 'required_if:order_type,delivery|nullable|string',
-            'delivery_city' => 'required_if:order_type,delivery|nullable|string',
-            'delivery_zip' => 'required_if:order_type,delivery|nullable|string',
             'items' => 'nullable|array',
             'items.*.menu_id' => 'required_with:items|exists:menus,id',
             'items.*.quantity' => 'required_with:items|integer|min:1',
-        ]);
+        ];
 
-        return DB::transaction(function () use ($validated, $request) {
+        // Guest users must provide customer details
+        if (!$user) {
+            $rules['customer_name'] = 'required|string|max:255';
+            $rules['customer_email'] = 'required|email';
+            $rules['customer_phone'] = 'required_if:order_type,delivery|nullable|string';
+        }
+
+        // Table number for dine-in
+        if ($request->order_type === 'dine') {
+            $rules['table_number'] = 'required|string';
+        }
+
+        // For delivery orders
+        if ($request->order_type === 'delivery') {
+            if ($user) {
+                // Logged in: can use address_id OR provide address
+                $rules['address_id'] = 'nullable|exists:addresses,id';
+                $rules['delivery_address'] = 'required_without:address_id|nullable|string';
+                $rules['delivery_city'] = 'required_without:address_id|nullable|string';
+                $rules['delivery_zip'] = 'required_without:address_id|nullable|string';
+            } else {
+                // Guest: must provide address
+                $rules['delivery_address'] = 'required|string';
+                $rules['delivery_city'] = 'required|string';
+                $rules['delivery_zip'] = 'required|string';
+            }
+        }
+
+        $validated = $request->validate($rules);
+
+        return DB::transaction(function () use ($validated, $request, $user) {
             // Get items from cart or direct
             $itemsToProcess = [];
-            $cartId = $request->header('X-Cart-ID');
-            $cart = $cartId ? Cart::where('session_id', $cartId)->with('items')->first() : null;
+            $cart = null;
+            
+            if ($user) {
+                $cart = Cart::where('user_id', $user->id)->with('items')->first();
+            } else {
+                $cartId = $request->header('X-Cart-ID');
+                $cart = $cartId ? Cart::where('session_id', $cartId)->with('items')->first() : null;
+            }
 
             if ($cart && $cart->items->isNotEmpty()) {
                 foreach ($cart->items as $cartItem) {
@@ -131,12 +162,17 @@ class CustomerController extends Controller
 
             $finalAmount = $totalAmount - $discountAmount;
 
+            // Get customer details
+            $customerName = $user ? $user->name : $validated['customer_name'];
+            $customerEmail = $user ? $user->email : $validated['customer_email'];
+            $customerPhone = $user ? $user->phone : ($validated['customer_phone'] ?? null);
+
             // Handle payment based on payment type
             if ($validated['payment_type'] === 'gateway') {
                 // Initialize Payment with Paystack
                 $paymentResult = $this->paymentGateway->charge(
                     $finalAmount,
-                    $validated['customer_email'],
+                    $customerEmail,
                     ['callback_url' => 'https://eatwella.ng/api/payment/callback']
                 );
 
@@ -156,6 +192,28 @@ class CustomerController extends Controller
                 $paymentMethod = 'cash';
             }
 
+            // Handle delivery address
+            $deliveryAddress = null;
+            $deliveryCity = null;
+            $deliveryZip = null;
+
+            if ($validated['order_type'] === 'delivery') {
+                if ($user && !empty($validated['address_id'])) {
+                    // Use saved address
+                    $address = \App\Models\Address::where('id', $validated['address_id'])
+                        ->where('user_id', $user->id)
+                        ->firstOrFail();
+                    $deliveryAddress = $address->street_address;
+                    $deliveryCity = $address->state;
+                    $deliveryZip = $address->postal_code;
+                } else {
+                    // Use provided address
+                    $deliveryAddress = $validated['delivery_address'] ?? null;
+                    $deliveryCity = $validated['delivery_city'] ?? null;
+                    $deliveryZip = $validated['delivery_zip'] ?? null;
+                }
+            }
+
             // Create Order
             $expiresAt = null;
             if ($validated['payment_type'] === 'cash' && in_array($validated['order_type'], ['dine', 'pickup'])) {
@@ -164,15 +222,16 @@ class CustomerController extends Controller
 
             $order = Order::create([
                 'order_number' => $orderNumber,
+                'user_id' => $user ? $user->id : null,
                 'order_type' => $validated['order_type'],
                 'payment_type' => $validated['payment_type'],
-                'customer_email' => $validated['customer_email'],
-                'customer_name' => $validated['customer_name'],
-                'customer_phone' => $validated['customer_phone'] ?? null,
+                'customer_email' => $customerEmail,
+                'customer_name' => $customerName,
+                'customer_phone' => $customerPhone,
                 'table_number' => $validated['table_number'] ?? null,
-                'delivery_address' => $validated['delivery_address'] ?? null,
-                'delivery_city' => $validated['delivery_city'] ?? null,
-                'delivery_zip' => $validated['delivery_zip'] ?? null,
+                'delivery_address' => $deliveryAddress,
+                'delivery_city' => $deliveryCity,
+                'delivery_zip' => $deliveryZip,
                 'total_amount' => $totalAmount,
                 'discount_amount' => $discountAmount,
                 'discount_code' => $discountCode,

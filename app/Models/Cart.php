@@ -10,7 +10,7 @@ class Cart extends Model
 {
     use HasUuids;
 
-    protected $fillable = ['session_id', 'discount_code'];
+    protected $fillable = ['session_id', 'user_id', 'discount_code'];
 
     protected $appends = ['subtotal', 'discount_amount', 'total', 'total_items'];
 
@@ -49,5 +49,10 @@ class Cart extends Model
     public function getTotalItemsAttribute()
     {
         return $this->items->sum('quantity');
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
     }
 }
