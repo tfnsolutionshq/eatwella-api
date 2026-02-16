@@ -12,92 +12,125 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             line-height: 1.6;
-            color: #333;
-            background-color: #f8f9fa;
+            color: #1a1a1a;
+            background-color: #f0f4f3;
         }
 
         .container {
             max-width: 600px;
-            margin: 0 auto;
+            margin: 20px auto;
             background-color: #ffffff;
-            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 24px rgba(34, 139, 34, 0.08);
         }
 
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #2d7a3e 0%, #1e5a2e 100%);
             color: white;
-            padding: 40px 30px;
+            padding: 50px 30px;
             text-align: center;
+            position: relative;
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #4ade80, #22c55e, #16a34a);
+        }
+
+        .logo {
+            max-width: 220px;
+            height: auto;
+            margin-bottom: 25px;
+            filter: brightness(1.1);
         }
 
         .header h1 {
-            font-size: 28px;
-            margin-bottom: 10px;
-            font-weight: 300;
+            font-size: 32px;
+            margin-bottom: 12px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
         }
 
         .header p {
-            font-size: 16px;
-            opacity: 0.9;
+            font-size: 17px;
+            opacity: 0.95;
+            font-weight: 300;
         }
 
         .content {
-            padding: 40px 30px;
+            padding: 45px 35px;
         }
 
         .order-info {
-            background-color: #f8f9fa;
-            padding: 25px;
-            border-radius: 8px;
-            margin-bottom: 30px;
-            border-left: 4px solid #667eea;
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+            padding: 28px;
+            border-radius: 10px;
+            margin-bottom: 35px;
+            border-left: 5px solid #22c55e;
+            box-shadow: 0 2px 8px rgba(34, 197, 94, 0.1);
         }
 
         .order-info h2 {
-            color: #667eea;
-            margin-bottom: 15px;
-            font-size: 20px;
+            color: #166534;
+            margin-bottom: 20px;
+            font-size: 22px;
+            font-weight: 600;
         }
 
         .info-row {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 10px;
-            padding: 8px 0;
-            border-bottom: 1px solid #e9ecef;
+            margin-bottom: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(34, 197, 94, 0.15);
+            font-size: 15px;
         }
 
         .info-row:last-child {
             border-bottom: none;
-            font-weight: bold;
-            font-size: 18px;
-            color: #28a745;
+        }
+
+        .info-row span:first-child {
+            color: #166534;
+            font-weight: 500;
         }
 
         .items-section {
-            margin-bottom: 30px;
+            margin-bottom: 35px;
         }
 
         .items-section h3 {
-            color: #333;
-            margin-bottom: 20px;
-            font-size: 18px;
-            border-bottom: 2px solid #667eea;
-            padding-bottom: 10px;
+            color: #166534;
+            margin-bottom: 22px;
+            font-size: 20px;
+            font-weight: 600;
+            border-bottom: 3px solid #22c55e;
+            padding-bottom: 12px;
         }
 
         .item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 15px 0;
-            border-bottom: 1px solid #e9ecef;
+            padding: 18px;
+            margin-bottom: 12px;
+            background-color: #f9fafb;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+            transition: all 0.2s;
         }
 
-        .item:last-child {
-            border-bottom: none;
+        .item:hover {
+            background-color: #f0fdf4;
+            border-color: #86efac;
         }
 
         .item-details {
@@ -106,119 +139,139 @@
 
         .item-name {
             font-weight: 600;
-            color: #333;
-            margin-bottom: 5px;
+            color: #1a1a1a;
+            margin-bottom: 6px;
+            font-size: 16px;
         }
 
         .item-qty {
-            color: #666;
+            color: #6b7280;
             font-size: 14px;
         }
 
         .item-price {
-            font-weight: bold;
-            color: #28a745;
-            font-size: 16px;
+            font-weight: 700;
+            color: #16a34a;
+            font-size: 17px;
         }
 
         .total-section {
-            background-color: #f8f9fa;
-            padding: 25px;
-            border-radius: 8px;
-            margin-bottom: 30px;
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+            padding: 28px;
+            border-radius: 10px;
+            margin-bottom: 35px;
+            border: 2px solid #86efac;
         }
 
         .total-row {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 10px;
-            padding: 5px 0;
+            margin-bottom: 12px;
+            padding: 8px 0;
+            font-size: 15px;
         }
 
         .total-row.final {
-            border-top: 2px solid #667eea;
-            padding-top: 15px;
-            margin-top: 15px;
-            font-size: 20px;
-            font-weight: bold;
-            color: #28a745;
+            border-top: 3px solid #22c55e;
+            padding-top: 18px;
+            margin-top: 18px;
+            font-size: 24px;
+            font-weight: 700;
+            color: #166534;
         }
 
         .status-badge {
             display: inline-block;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: bold;
+            padding: 10px 18px;
+            border-radius: 25px;
+            font-size: 13px;
+            font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.8px;
         }
 
         .status-confirmed {
-            background-color: #d4edda;
-            color: #155724;
+            background-color: #22c55e;
+            color: white;
         }
 
         .status-pending {
-            background-color: #fff3cd;
-            color: #856404;
+            background-color: #fbbf24;
+            color: #78350f;
         }
 
         .footer {
-            background-color: #343a40;
+            background: linear-gradient(135deg, #1e5a2e 0%, #14532d 100%);
             color: white;
-            padding: 30px;
+            padding: 40px 30px;
             text-align: center;
         }
 
-        .footer h3 {
-            margin-bottom: 15px;
-            color: #667eea;
+        .footer .logo {
+            max-width: 180px;
+            margin-bottom: 20px;
+            opacity: 0.95;
         }
 
         .footer p {
-            margin-bottom: 10px;
-            opacity: 0.8;
+            margin-bottom: 12px;
+            opacity: 0.9;
+            font-size: 15px;
         }
 
         .track-button {
             display: inline-block;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
             color: white;
-            padding: 12px 30px;
+            padding: 16px 40px;
             text-decoration: none;
-            border-radius: 25px;
-            margin: 20px 0;
-            font-weight: bold;
-            transition: transform 0.2s;
+            border-radius: 30px;
+            margin: 25px 0;
+            font-weight: 700;
+            font-size: 16px;
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+            transition: all 0.3s;
+            letter-spacing: 0.3px;
         }
 
         .track-button:hover {
             transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
+        }
+
+        .divider {
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #22c55e, transparent);
+            margin: 30px 0;
         }
 
         @media (max-width: 600px) {
             .container {
                 margin: 0;
-                box-shadow: none;
+                border-radius: 0;
             }
 
             .header, .content, .footer {
-                padding: 20px;
+                padding: 30px 20px;
+            }
+
+            .logo {
+                max-width: 180px;
+            }
+
+            .header h1 {
+                font-size: 26px;
             }
 
             .info-row, .total-row {
                 flex-direction: column;
-                align-items: flex-start;
+                gap: 5px;
             }
 
             .item {
                 flex-direction: column;
                 align-items: flex-start;
-            }
-
-            .item-price {
-                margin-top: 10px;
+                gap: 10px;
             }
         }
     </style>
@@ -227,9 +280,9 @@
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <img src="{{ asset('logo.jpg') }}" alt="EatWella" style="max-width: 150px; margin-bottom: 20px;">
-            <h1>Order Confirmed!</h1>
-            <p>Thank you for your order!</p>
+            <img src="{{ asset('logo.jpg') }}" alt="EatWella" class="logo">
+            <h1>✓ Order Confirmed!</h1>
+            <p>Thank you for choosing EatWella</p>
         </div>
 
         <!-- Content -->
@@ -324,11 +377,15 @@
 
         <!-- Footer -->
         <div class="footer">
-            <img src="{{ asset('logo.jpg') }}" alt="EatWella" style="max-width: 120px; margin-bottom: 15px; opacity: 0.9;">
-            <p>Delicious meals delivered to your doorstep</p>
-            <p>Thank you for choosing EatWella!</p>
+            <img src="{{ asset('logo.jpg') }}" alt="EatWella" class="logo">
+            <div class="divider" style="background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);"></div>
+            <p style="font-size: 17px; font-weight: 500;">🍽️ Delicious meals, delivered fresh</p>
+            <p style="font-size: 14px; margin-top: 25px; opacity: 0.7;">
+                Questions? Contact us at <a href="mailto:support@eatwella.ng" style="color: #86efac; text-decoration: none;">support@eatwella.ng</a>
+            </p>
             <p style="font-size: 12px; margin-top: 20px; opacity: 0.6;">
-                This is an automated email. Please do not reply to this message.
+                © 2024 EatWella. All rights reserved.<br>
+                This is an automated message, please do not reply.
             </p>
         </div>
     </div>

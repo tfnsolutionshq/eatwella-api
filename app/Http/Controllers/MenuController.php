@@ -86,6 +86,18 @@ class MenuController extends Controller
 
     public function destroy(Menu $menu)
     {
+        $hasConfirmedOrders = $menu->orderItems()
+            ->whereHas('order', function ($query) {
+                $query->where('status', 'confirmed');
+            })
+            ->exists();
+
+        if ($hasConfirmedOrders) {
+            return response()->json([
+                'message' => 'Cannot delete menu. There are existing confirmed orders with this item.'
+            ], 422);
+        }
+
         $images = json_decode($menu->getRawOriginal('images'), true) ?? [];
         foreach ($images as $image) {
             Storage::disk('public')->delete($image);

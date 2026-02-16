@@ -10,24 +10,11 @@ use Illuminate\Http\Request;
 class CartController extends Controller
 {
     /**
-     * Get the current session ID.
+     * Get the cart ID from X-Cart-ID header.
      */
-    protected function getSessionId(Request $request)
+    protected function getCartId(Request $request)
     {
-        // For API (stateful or stateless), if we want to rely on Laravel session:
-        // Ensure 'EnsureFrontendRequestsAreStateful' or 'StartSession' middleware is active.
-        // Or simply use the session ID from the request if available, or a custom header if stateless.
-
-        // However, for pure API without cookies, we might still need a client-generated ID
-        // OR we return a session ID on first response and expect client to send it back.
-
-        // But the user requested: "Use $request->session()->getId()"
-        // This implies the environment supports sessions (e.g. web middleware group or similar).
-        // If this is an API route, sessions might not be started by default in Laravel 11/12 API group.
-        // We will assume sessions are enabled or we enable them.
-
-        // Let's use the session() helper. If it's null, we fallback or throw.
-        return $request->session()->getId();
+        return $request->header('X-Cart-ID');
     }
 
     /**
@@ -35,8 +22,12 @@ class CartController extends Controller
      */
     public function index(Request $request)
     {
-        $sessionId = $this->getSessionId($request);
-        $cart = Cart::with('items.menu')->where('session_id', $sessionId)->first();
+        $cartId = $this->getCartId($request);
+        if (!$cartId) {
+            return response()->json(['items' => []]);
+        }
+
+        $cart = Cart::with('items.menu')->where('session_id', $cartId)->first();
 
         if (!$cart) {
             return response()->json(['items' => []]);
@@ -60,8 +51,12 @@ class CartController extends Controller
             return response()->json(['message' => 'Menu unavailable'], 422);
         }
 
-        $sessionId = $this->getSessionId($request);
-        $cart = Cart::firstOrCreate(['session_id' => $sessionId]);
+        $cartId = $this->getCartId($request);
+        if (!$cartId) {
+            return response()->json(['message' => 'X-Cart-ID header required'], 400);
+        }
+
+        $cart = Cart::firstOrCreate(['session_id' => $cartId]);
 
         $cartItem = $cart->items()->where('menu_id', $validated['menu_id'])->first();
 
@@ -87,8 +82,12 @@ class CartController extends Controller
             'quantity' => 'required|integer|min:1',
         ]);
 
-        $sessionId = $this->getSessionId($request);
-        $cart = Cart::where('session_id', $sessionId)->first();
+        $cartId = $this->getCartId($request);
+        if (!$cartId) {
+            return response()->json(['message' => 'X-Cart-ID header required'], 400);
+        }
+
+        $cart = Cart::where('session_id', $cartId)->first();
         
         if (!$cart) {
             return response()->json(['message' => 'Cart not found'], 404);
@@ -110,8 +109,12 @@ class CartController extends Controller
      */
     public function destroy(Request $request, $itemId)
     {
-        $sessionId = $this->getSessionId($request);
-        $cart = Cart::where('session_id', $sessionId)->first();
+        $cartId = $this->getCartId($request);
+        if (!$cartId) {
+            return response()->json(['message' => 'X-Cart-ID header required'], 400);
+        }
+
+        $cart = Cart::where('session_id', $cartId)->first();
         
         if (!$cart) {
             return response()->json(['message' => 'Cart not found'], 404);
@@ -136,8 +139,12 @@ class CartController extends Controller
     {
         $request->validate(['code' => 'required|string']);
 
-        $sessionId = $this->getSessionId($request);
-        $cart = Cart::where('session_id', $sessionId)->first();
+        $cartId = $this->getCartId($request);
+        if (!$cartId) {
+            return response()->json(['message' => 'X-Cart-ID header required'], 400);
+        }
+
+        $cart = Cart::where('session_id', $cartId)->first();
         
         if (!$cart) {
             return response()->json(['message' => 'Cart is empty'], 404);
@@ -164,8 +171,12 @@ class CartController extends Controller
      */
     public function removeDiscount(Request $request)
     {
-        $sessionId = $this->getSessionId($request);
-        $cart = Cart::where('session_id', $sessionId)->first();
+        $cartId = $this->getCartId($request);
+        if (!$cartId) {
+            return response()->json(['message' => 'X-Cart-ID header required'], 400);
+        }
+
+        $cart = Cart::where('session_id', $cartId)->first();
         
         if (!$cart) {
             return response()->json(['message' => 'Cart not found'], 404);

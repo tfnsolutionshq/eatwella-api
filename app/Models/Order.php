@@ -26,7 +26,12 @@ class Order extends Model
         'discount_amount',
         'discount_code',
         'final_amount',
-        'status'
+        'status',
+        'expires_at'
+    ];
+
+    protected $casts = [
+        'expires_at' => 'datetime',
     ];
 
     public function orderItems(): HasMany

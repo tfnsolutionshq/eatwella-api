@@ -74,8 +74,8 @@ class CustomerController extends Controller
         return DB::transaction(function () use ($validated, $request) {
             // Get items from cart or direct
             $itemsToProcess = [];
-            $sessionId = $request->session()->getId();
-            $cart = Cart::where('session_id', $sessionId)->with('items')->first();
+            $cartId = $request->header('X-Cart-ID');
+            $cart = $cartId ? Cart::where('session_id', $cartId)->with('items')->first() : null;
 
             if ($cart && $cart->items->isNotEmpty()) {
                 foreach ($cart->items as $cartItem) {
@@ -116,14 +116,14 @@ class CustomerController extends Controller
             // Apply Discount from Cart
             $discountAmount = 0;
             $discountCode = null;
-            
+
             if ($cart && $cart->discount_code) {
                 $discount = \App\Models\Discount::where('code', $cart->discount_code)->first();
-                
+
                 if ($discount && $discount->isValid()) {
                     $discountAmount = $discount->calculateDiscount($totalAmount);
                     $discountCode = $discount->code;
-                    
+
                     // Increment usage count
                     $discount->increment('used_count');
                 }
@@ -137,7 +137,7 @@ class CustomerController extends Controller
                 $paymentResult = $this->paymentGateway->charge(
                     $finalAmount,
                     $validated['customer_email'],
-                    ['callback_url' => config('app.url') . '/api/payment/callback']
+                    ['callback_url' => 'https://eatwella.ng/api/payment/callback']
                 );
 
                 if ($paymentResult['status'] === 'failed') {
@@ -157,6 +157,11 @@ class CustomerController extends Controller
             }
 
             // Create Order
+            $expiresAt = null;
+            if ($validated['payment_type'] === 'cash' && in_array($validated['order_type'], ['dine', 'pickup'])) {
+                $expiresAt = now()->addMinutes(45);
+            }
+
             $order = Order::create([
                 'order_number' => $orderNumber,
                 'order_type' => $validated['order_type'],
@@ -172,7 +177,8 @@ class CustomerController extends Controller
                 'discount_amount' => $discountAmount,
                 'discount_code' => $discountCode,
                 'final_amount' => $finalAmount,
-                'status' => $orderStatus
+                'status' => $orderStatus,
+                'expires_at' => $expiresAt
             ]);
 
             // Create Order Items
@@ -194,15 +200,10 @@ class CustomerController extends Controller
                 $cart->delete();
             }
 
-            // Send email for cash orders
-            if ($validated['payment_type'] === 'cash') {
-                Mail::to($order->customer_email)->send(new OrderPlaced($order));
-            }
-
             // Prepare response
             $response = [
-                'message' => $validated['payment_type'] === 'cash' 
-                    ? 'Order placed successfully' 
+                'message' => $validated['payment_type'] === 'cash'
+                    ? 'Order placed successfully'
                     : 'Order created, proceed to payment',
                 'order' => $order->load('orderItems', 'invoice')
             ];
@@ -212,6 +213,15 @@ class CustomerController extends Controller
                     'authorization_url' => $paymentResult['authorization_url'],
                     'reference' => $paymentResult['reference']
                 ];
+            }
+
+            // Send email after response data is ready (non-blocking)
+            if ($validated['payment_type'] === 'cash') {
+                try {
+                    Mail::to($order->customer_email)->send(new OrderPlaced($order));
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send order email: ' . $e->getMessage());
+                }
             }
 
             return response()->json($response, 201);

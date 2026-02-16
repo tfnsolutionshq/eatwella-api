@@ -113,53 +113,36 @@ class PaymentController extends Controller
     }
 
     /**
-     * Payment callback endpoint (returns JSON)
+     * Payment callback endpoint (redirects to frontend receipt page)
      */
     public function paymentCallback(Request $request)
     {
         $reference = $request->query('reference') ?: $request->query('trxref');
 
         if (!$reference) {
-            return response()->json(['message' => 'No reference provided'], 400);
+            return redirect('https://eatwella.ng');
         }
 
-        $order = Order::where('order_number', $reference)
-            ->with(['orderItems.menu', 'invoice'])
-            ->first();
+        $order = Order::where('order_number', $reference)->first();
 
         if (!$order) {
-            return response()->json(['message' => 'Order not found'], 404);
+            return redirect('https://eatwella.ng');
         }
 
-        // If still pending, verify with Paystack (handles webhook delays)
+        // If still pending, verify with Paystack
         if ($order->status === 'pending') {
             $paymentGateway = app(\App\Interfaces\PaymentGatewayInterface::class);
             $verificationResult = $paymentGateway->verifyTransaction($reference);
 
             if ($verificationResult['status'] === 'success') {
-                // Update order and invoice status
                 $order->update(['status' => 'confirmed']);
                 $order->invoice()->update(['payment_status' => 'paid']);
-
-                // Send confirmation email
                 Mail::to($order->customer_email)->send(new \App\Mail\OrderPlaced($order));
-
-                // Refresh order data
-                $order->refresh();
-                $order->load(['orderItems.menu', 'invoice']);
-
-                Log::info("Order {$reference} payment confirmed via callback (webhook delay)");
+                Log::info("Order {$reference} payment confirmed via callback");
             }
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Payment callback received',
-            'order' => $order,
-            'payment_status' => $order->invoice->payment_status,
-            'order_status' => $order->status,
-            'reference' => $reference
-        ]);
+        return redirect('https://eatwella.ng/receipt/' . $order->id);
     }
 
     /**

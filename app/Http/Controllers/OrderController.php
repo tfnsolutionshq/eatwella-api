@@ -34,8 +34,13 @@ class OrderController extends Controller
         $originalStatus = $order->status;
         $order->update(['status' => $validated['status']]);
 
-        if ($validated['status'] === 'completed' && $originalStatus !== 'completed') {
-            Mail::to($order->customer_email)->send(new OrderCompleted($order));
+        // Clear expiry when admin marks as completed
+        if ($validated['status'] === 'completed') {
+            $order->update(['expires_at' => null]);
+            
+            if ($originalStatus !== 'completed') {
+                Mail::to($order->customer_email)->send(new OrderCompleted($order));
+            }
         }
 
         return response()->json($order);
