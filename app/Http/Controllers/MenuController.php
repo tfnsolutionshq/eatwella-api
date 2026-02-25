@@ -10,6 +10,9 @@ class MenuController extends Controller
 {
     public function index(Request $request)
     {
+        if ($response = $this->requireRole($request, ['admin'])) {
+            return $response;
+        }
         $query = Menu::with('category');
 
         if ($request->has('category_id')) {
@@ -21,6 +24,9 @@ class MenuController extends Controller
 
     public function store(Request $request)
     {
+        if ($response = $this->requireRole($request, ['admin'])) {
+            return $response;
+        }
         $validated = $request->validate([
             'category_id' => 'required|exists:categories,id',
             'name' => 'required|string|max:255',
@@ -44,13 +50,19 @@ class MenuController extends Controller
         return response()->json($menu, 201);
     }
 
-    public function show(Menu $menu)
+    public function show(Request $request, Menu $menu)
     {
+        if ($response = $this->requireRole($request, ['admin'])) {
+            return $response;
+        }
         return $menu->load('category');
     }
 
     public function update(Request $request, Menu $menu)
     {
+        if ($response = $this->requireRole($request, ['admin'])) {
+            return $response;
+        }
         $validated = $request->validate([
             'category_id' => 'exists:categories,id',
             'name' => 'string|max:255',
@@ -84,8 +96,11 @@ class MenuController extends Controller
         return response()->json($menu);
     }
 
-    public function destroy(Menu $menu)
+    public function destroy(Request $request, Menu $menu)
     {
+        if ($response = $this->requireRole($request, ['admin'])) {
+            return $response;
+        }
         $hasConfirmedOrders = $menu->orderItems()
             ->whereHas('order', function ($query) {
                 $query->where('status', 'confirmed');

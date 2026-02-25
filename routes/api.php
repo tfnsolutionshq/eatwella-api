@@ -37,10 +37,10 @@ Route::get('/orders/track/{order_number}', [CustomerController::class, 'trackOrd
 // Cart Routes (Public/Guest + Authenticated) - supports both
 Route::get('/cart', [CartController::class, 'index']);
 Route::post('/cart', [CartController::class, 'store']);
-Route::put('/cart/{itemId}', [CartController::class, 'update']);
-Route::delete('/cart/{itemId}', [CartController::class, 'destroy']);
 Route::post('/cart/apply-discount', [CartController::class, 'applyDiscount']);
 Route::delete('/cart/remove-discount', [CartController::class, 'removeDiscount']);
+Route::put('/cart/{itemId}', [CartController::class, 'update']);
+Route::delete('/cart/{itemId}', [CartController::class, 'destroy']);
 
 // Discount Validation (Public)
 Route::post('/discounts/validate', [DiscountController::class, 'validateCode']);
@@ -88,11 +88,14 @@ Route::middleware('auth:sanctum')->group(function () {
     // Registered Users Management
     Route::get('/admin/users', [UserController::class, 'index']);
     Route::get('/admin/users/{user}', [UserController::class, 'show']);
+    Route::post('/admin/cashiers', [UserController::class, 'storeCashier']);
 
     // Order Management
     Route::get('/admin/orders', [OrderController::class, 'index']);
+    Route::get('/admin/orders/cashier', [OrderController::class, 'cashierCreatedOrders']);
     Route::get('/admin/orders/{order}', [OrderController::class, 'show']);
     Route::put('/admin/orders/{order}', [OrderController::class, 'update']);
+    Route::get('/cashier/orders', [OrderController::class, 'cashierOrders']);
 
     // Analytics
     Route::prefix('admin/analytics')->group(function () {

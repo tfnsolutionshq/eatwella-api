@@ -9,11 +9,17 @@ class DiscountController extends Controller
 {
     public function index(Request $request)
     {
+        if ($response = $this->requireRole($request, ['admin'])) {
+            return $response;
+        }
         return Discount::paginate($request->get('per_page', 15));
     }
 
     public function store(Request $request)
     {
+        if ($response = $this->requireRole($request, ['admin'])) {
+            return $response;
+        }
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'type' => 'required|in:percentage,fixed',
@@ -41,13 +47,19 @@ class DiscountController extends Controller
         return $code;
     }
 
-    public function show(Discount $discount)
+    public function show(Request $request, Discount $discount)
     {
+        if ($response = $this->requireRole($request, ['admin'])) {
+            return $response;
+        }
         return $discount;
     }
 
     public function update(Request $request, Discount $discount)
     {
+        if ($response = $this->requireRole($request, ['admin'])) {
+            return $response;
+        }
         $validated = $request->validate([
             'name' => 'string|max:255',
             'type' => 'in:percentage,fixed',
@@ -63,8 +75,11 @@ class DiscountController extends Controller
         return response()->json($discount);
     }
 
-    public function destroy(Discount $discount)
+    public function destroy(Request $request, Discount $discount)
     {
+        if ($response = $this->requireRole($request, ['admin'])) {
+            return $response;
+        }
         $discount->delete();
         return response()->json(['message' => 'Discount deleted']);
     }

@@ -13,14 +13,16 @@ class CustomerAuthController extends Controller
     public function register(Request $request)
     {
         $validated = $request->validate([
+            'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:6',
         ]);
 
         $user = User::create([
+            'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => $validated['password'],
-            'name' => explode('@', $validated['email'])[0],
+            'role' => 'customer',
         ]);
 
         $token = $user->createToken('customer-token')->plainTextToken;
@@ -47,6 +49,10 @@ class CustomerAuthController extends Controller
             ]);
         }
 
+        if ($user->role !== 'customer') {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $token = $user->createToken('customer-token')->plainTextToken;
 
         return response()->json([
@@ -58,11 +64,17 @@ class CustomerAuthController extends Controller
 
     public function profile(Request $request)
     {
+        if ($response = $this->requireRole($request, ['customer'])) {
+            return $response;
+        }
         return response()->json($request->user());
     }
 
     public function updateProfile(Request $request)
     {
+        if ($response = $this->requireRole($request, ['customer'])) {
+            return $response;
+        }
         $validated = $request->validate([
             'name' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:20',
@@ -79,8 +91,11 @@ class CustomerAuthController extends Controller
 
     public function overview(Request $request)
     {
+        if ($response = $this->requireRole($request, ['customer'])) {
+            return $response;
+        }
         $user = $request->user();
-        
+
         $totalOrders = Order::where('user_id', $user->id)->count();
         $totalSpent = Order::where('user_id', $user->id)
             ->whereIn('status', ['completed', 'confirmed'])
@@ -96,8 +111,11 @@ class CustomerAuthController extends Controller
 
     public function recentOrders(Request $request)
     {
+        if ($response = $this->requireRole($request, ['customer'])) {
+            return $response;
+        }
         $perPage = $request->get('per_page', 10);
-        
+
         $orders = Order::where('user_id', $request->user()->id)
             ->with(['orderItems.menu', 'invoice'])
             ->latest()
@@ -108,6 +126,9 @@ class CustomerAuthController extends Controller
 
     public function logout(Request $request)
     {
+        if ($response = $this->requireRole($request, ['customer'])) {
+            return $response;
+        }
         $request->user()->currentAccessToken()->delete();
 
         return response()->json(['message' => 'Logged out successfully']);
@@ -115,6 +136,9 @@ class CustomerAuthController extends Controller
 
     public function changePassword(Request $request)
     {
+        if ($response = $this->requireRole($request, ['customer'])) {
+            return $response;
+        }
         $validated = $request->validate([
             'current_password' => 'required',
             'new_password' => 'required|string|min:6',
@@ -131,6 +155,9 @@ class CustomerAuthController extends Controller
 
     public function deleteAccount(Request $request)
     {
+        if ($response = $this->requireRole($request, ['customer'])) {
+            return $response;
+        }
         $request->validate(['password' => 'required']);
 
         if (!Hash::check($request->password, $request->user()->password)) {

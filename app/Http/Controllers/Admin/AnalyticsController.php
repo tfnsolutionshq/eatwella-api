@@ -16,6 +16,12 @@ class AnalyticsController extends Controller
      */
     public function summary(Request $request)
     {
+        if ($response = $this->requireRole($request, ['admin'])) {
+            return $response;
+        }
+        $startDate = $request->query('start_date', Carbon::now()->subDays(30)->toDateString());
+        $endDate = $request->query('end_date', Carbon::now()->toDateString());
+        }
         $startDate = $request->query('start_date', Carbon::now()->subDays(30)->toDateString());
         $endDate = $request->query('end_date', Carbon::now()->toDateString());
 
@@ -69,6 +75,9 @@ class AnalyticsController extends Controller
      */
     public function dailySales(Request $request)
     {
+        if ($response = $this->requireRole($request, ['admin'])) {
+            return $response;
+        }
         $startDate = $request->query('start_date', Carbon::now()->subDays(7)->toDateString());
         $endDate = $request->query('end_date', Carbon::now()->toDateString());
 

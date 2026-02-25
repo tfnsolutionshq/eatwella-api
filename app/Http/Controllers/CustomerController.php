@@ -57,7 +57,12 @@ class CustomerController extends Controller
     public function checkout(Request $request)
     {
         $user = auth('sanctum')->user();
-        
+        if ($user && !in_array($user->role, ['customer', 'cashier'], true)) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+        $isCashier = $user && $user->role === 'cashier';
+        $isCustomer = $user && $user->role === 'customer';
+
         $rules = [
             'order_type' => 'required|in:dine,pickup,delivery',
             'payment_type' => 'required|in:cash,gateway',
@@ -67,7 +72,7 @@ class CustomerController extends Controller
         ];
 
         // Guest users must provide customer details
-        if (!$user) {
+        if (!$user || $isCashier) {
             $rules['customer_name'] = 'required|string|max:255';
             $rules['customer_email'] = 'required|email';
             $rules['customer_phone'] = 'required_if:order_type,delivery|nullable|string';
@@ -80,7 +85,7 @@ class CustomerController extends Controller
 
         // For delivery orders
         if ($request->order_type === 'delivery') {
-            if ($user) {
+            if ($isCustomer) {
                 // Logged in: can use address_id OR provide address
                 $rules['address_id'] = 'nullable|exists:addresses,id';
                 $rules['delivery_address'] = 'required_without:address_id|nullable|string';
@@ -96,11 +101,11 @@ class CustomerController extends Controller
 
         $validated = $request->validate($rules);
 
-        return DB::transaction(function () use ($validated, $request, $user) {
+        return DB::transaction(function () use ($validated, $request, $user, $isCashier, $isCustomer) {
             // Get items from cart or direct
             $itemsToProcess = [];
             $cart = null;
-            
+
             if ($user) {
                 $cart = Cart::where('user_id', $user->id)->with('items')->first();
             } else {
@@ -163,9 +168,11 @@ class CustomerController extends Controller
             $finalAmount = $totalAmount - $discountAmount;
 
             // Get customer details
-            $customerName = $user ? $user->name : $validated['customer_name'];
-            $customerEmail = $user ? $user->email : $validated['customer_email'];
-            $customerPhone = $user ? $user->phone : ($validated['customer_phone'] ?? null);
+            $customerName = $isCustomer ? $user->name : $validated['customer_name'];
+            $customerEmail = $isCustomer ? $user->email : $validated['customer_email'];
+            $customerPhone = $isCustomer ? $user->phone : ($validated['customer_phone'] ?? null);
+            $orderUserId = $isCustomer ? $user->id : null;
+            $cashierId = $isCashier ? $user->id : null;
 
             // Handle payment based on payment type
             if ($validated['payment_type'] === 'gateway') {
@@ -198,7 +205,7 @@ class CustomerController extends Controller
             $deliveryZip = null;
 
             if ($validated['order_type'] === 'delivery') {
-                if ($user && !empty($validated['address_id'])) {
+                if ($isCustomer && !empty($validated['address_id'])) {
                     // Use saved address
                     $address = \App\Models\Address::where('id', $validated['address_id'])
                         ->where('user_id', $user->id)
@@ -222,7 +229,8 @@ class CustomerController extends Controller
 
             $order = Order::create([
                 'order_number' => $orderNumber,
-                'user_id' => $user ? $user->id : null,
+                'user_id' => $orderUserId,
+                'cashier_id' => $cashierId,
                 'order_type' => $validated['order_type'],
                 'payment_type' => $validated['payment_type'],
                 'customer_email' => $customerEmail,

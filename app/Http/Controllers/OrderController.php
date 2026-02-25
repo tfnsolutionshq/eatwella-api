@@ -11,7 +11,10 @@ class OrderController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Order::with(['orderItems.menu', 'user.addresses']);
+        if ($response = $this->requireRole($request, ['admin', 'cashier'])) {
+            return $response;
+        }
+        $query = Order::with(['orderItems.menu', 'user.addresses', 'cashier']);
 
         if ($request->has('status')) {
             $query->where('status', $request->status);
@@ -20,13 +23,19 @@ class OrderController extends Controller
         return $query->latest()->paginate($request->get('per_page', 15));
     }
 
-    public function show(Order $order)
+    public function show(Request $request, Order $order)
     {
-        return $order->load(['orderItems.menu', 'invoice', 'user.addresses']);
+        if ($response = $this->requireRole($request, ['admin', 'cashier'])) {
+            return $response;
+        }
+        return $order->load(['orderItems.menu', 'invoice', 'user.addresses', 'cashier']);
     }
 
     public function update(Request $request, Order $order)
     {
+        if ($response = $this->requireRole($request, ['admin', 'cashier'])) {
+            return $response;
+        }
         $validated = $request->validate([
             'status' => 'required|in:pending,processing,completed,cancelled'
         ]);
@@ -37,12 +46,44 @@ class OrderController extends Controller
         // Clear expiry when admin marks as completed
         if ($validated['status'] === 'completed') {
             $order->update(['expires_at' => null]);
-            
+
             if ($originalStatus !== 'completed') {
                 Mail::to($order->customer_email)->send(new OrderCompleted($order));
             }
         }
 
         return response()->json($order);
+    }
+
+    public function cashierOrders(Request $request)
+    {
+        if ($response = $this->requireRole($request, ['cashier'])) {
+            return $response;
+        }
+
+        $query = Order::with(['orderItems.menu', 'invoice', 'user.addresses', 'cashier'])
+            ->where('cashier_id', $request->user()->id);
+
+        if ($request->has('status')) {
+            $query->where('status', $request->status);
+        }
+
+        return $query->latest()->paginate($request->get('per_page', 15));
+    }
+
+    public function cashierCreatedOrders(Request $request)
+    {
+        if ($response = $this->requireRole($request, ['admin'])) {
+            return $response;
+        }
+
+        $query = Order::with(['orderItems.menu', 'invoice', 'user.addresses', 'cashier'])
+            ->whereNotNull('cashier_id');
+
+        if ($request->has('status')) {
+            $query->where('status', $request->status);
+        }
+
+        return $query->latest()->paginate($request->get('per_page', 15));
     }
 }

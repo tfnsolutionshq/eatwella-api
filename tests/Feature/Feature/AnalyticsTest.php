@@ -15,7 +15,7 @@ class AnalyticsTest extends TestCase
 
     public function test_admin_can_view_analytics_summary()
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->create(['role' => 'admin']);
         $this->actingAs($admin);
 
         // Create some orders
@@ -47,7 +47,7 @@ class AnalyticsTest extends TestCase
 
     public function test_admin_can_view_top_menus()
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->create(['role' => 'admin']);
         $this->actingAs($admin);
 
         $menu1 = Menu::factory()->create(['name' => 'Pizza', 'price' => 20]);
@@ -70,7 +70,7 @@ class AnalyticsTest extends TestCase
 
     public function test_admin_can_view_daily_sales()
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->create(['role' => 'admin']);
         $this->actingAs($admin);
 
         Order::create([

@@ -17,6 +17,10 @@ class AuthController extends Controller
 
         if (Auth::attempt($credentials)) {
             $user = Auth::user();
+            if (!in_array($user->role, ['admin', 'cashier'], true)) {
+                Auth::logout();
+                return response()->json(['message' => 'Forbidden'], 403);
+            }
             $token = $user->createToken('admin-token')->plainTextToken;
             return response()->json(['token' => $token, 'user' => $user]);
         }

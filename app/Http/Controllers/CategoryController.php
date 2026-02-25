@@ -9,6 +9,11 @@ class CategoryController extends Controller
 {
     public function index(Request $request)
     {
+        if ($request->is('api/admin/*')) {
+            if ($response = $this->requireRole($request, ['admin'])) {
+                return $response;
+            }
+        }
         $query = Category::query();
         if ($request->has('active')) {
             $query->where('is_active', $request->active);
@@ -18,6 +23,9 @@ class CategoryController extends Controller
 
     public function store(Request $request)
     {
+        if ($response = $this->requireRole($request, ['admin'])) {
+            return $response;
+        }
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -28,13 +36,19 @@ class CategoryController extends Controller
         return response()->json($category, 201);
     }
 
-    public function show(Category $category)
+    public function show(Request $request, Category $category)
     {
+        if ($response = $this->requireRole($request, ['admin'])) {
+            return $response;
+        }
         return $category;
     }
 
     public function update(Request $request, Category $category)
     {
+        if ($response = $this->requireRole($request, ['admin'])) {
+            return $response;
+        }
         $validated = $request->validate([
             'name' => 'string|max:255',
             'description' => 'nullable|string',
@@ -45,8 +59,11 @@ class CategoryController extends Controller
         return response()->json($category);
     }
 
-    public function destroy(Category $category)
+    public function destroy(Request $request, Category $category)
     {
+        if ($response = $this->requireRole($request, ['admin'])) {
+            return $response;
+        }
         $category->delete();
         return response()->json(['message' => 'Category deleted']);
     }

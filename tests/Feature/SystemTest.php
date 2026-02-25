@@ -28,7 +28,8 @@ class SystemTest extends TestCase
         // 1. Admin Login
         $user = User::factory()->create([
             'email' => 'admin@example.com',
-            'password' => bcrypt('password')
+            'password' => bcrypt('password'),
+            'role' => 'admin',
         ]);
 
         $response = $this->postJson('/api/login', [
