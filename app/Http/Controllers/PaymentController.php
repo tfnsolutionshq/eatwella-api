@@ -11,11 +11,11 @@ use Illuminate\Support\Facades\Mail;
 class PaymentController extends Controller
 {
     /**
-     * Get all payments with totals (Admin only)
+     * Get all payments with totals (Admin and Cashier)
      */
     public function index(Request $request)
     {
-        if ($request->user()->role !== 'admin') {
+        if (!in_array($request->user()->role, ['admin', 'cashier'], true)) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
