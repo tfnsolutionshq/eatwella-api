@@ -14,6 +14,7 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\Admin\AnalyticsController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\TaxController;
 
 /*
 |--------------------------------------------------------------------------
@@ -68,15 +69,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/profile', [CustomerAuthController::class, 'updateProfile']);
         Route::get('/overview', [CustomerAuthController::class, 'overview']);
         Route::get('/orders', [CustomerAuthController::class, 'recentOrders']);
-        
+
         Route::get('/addresses', [AddressController::class, 'index']);
         Route::post('/addresses', [AddressController::class, 'store']);
         Route::put('/addresses/{address}', [AddressController::class, 'update']);
         Route::delete('/addresses/{address}', [AddressController::class, 'destroy']);
-        
+
         Route::put('/change-password', [CustomerAuthController::class, 'changePassword']);
         Route::delete('/delete-account', [CustomerAuthController::class, 'deleteAccount']);
-        
+
         Route::post('/logout', [CustomerAuthController::class, 'logout']);
     });
 
@@ -84,6 +85,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('admin/categories', CategoryController::class);
     Route::apiResource('admin/menus', MenuController::class);
     Route::apiResource('admin/discounts', DiscountController::class);
+    Route::apiResource('admin/taxes', TaxController::class);
+    Route::patch('/admin/taxes/{tax}/toggle', [TaxController::class, 'toggleStatus']);
+    Route::get('/admin/payments', [PaymentController::class, 'index']);
 
     // Registered Users Management
     Route::get('/admin/users', [UserController::class, 'index']);

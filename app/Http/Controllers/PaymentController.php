@@ -3,12 +3,46 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
+use App\Models\Invoice;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class PaymentController extends Controller
 {
+    /**
+     * Get all payments with totals (Admin only)
+     */
+    public function index(Request $request)
+    {
+        if ($request->user()->role !== 'admin') {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $perPage = $request->input('per_page', 15);
+
+        // Calculate totals
+        $totalRevenue = Invoice::where('payment_status', 'paid')->sum('amount');
+        $totalPending = Invoice::whereIn('payment_status', ['pending', 'unpaid'])->count();
+        $totalCompleted = Invoice::where('payment_status', 'paid')->count();
+        $totalTransactions = Invoice::count();
+
+        // Get paginated payments
+        $payments = Invoice::with(['order.user', 'order.cashier'])
+            ->latest()
+            ->paginate($perPage);
+
+        return response()->json([
+            'totals' => [
+                'total_revenue' => $totalRevenue,
+                'total_pending' => $totalPending,
+                'total_completed' => $totalCompleted,
+                'total_transactions' => $totalTransactions
+            ],
+            'payments' => $payments
+        ]);
+    }
+
     /**
      * Initialize payment - returns Paystack authorization URL
      */
@@ -27,7 +61,7 @@ class PaymentController extends Controller
 
         if (!empty($validated['discount_code'])) {
             $discount = \App\Models\Discount::where('code', strtoupper($validated['discount_code']))->first();
-            
+
             if ($discount && $discount->isValid()) {
                 $discountAmount = $discount->calculateDiscount($validated['amount']);
                 $finalAmount = max(0, $validated['amount'] - $discountAmount);

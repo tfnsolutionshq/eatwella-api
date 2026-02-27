@@ -21,9 +21,6 @@ class AnalyticsController extends Controller
         }
         $startDate = $request->query('start_date', Carbon::now()->subDays(30)->toDateString());
         $endDate = $request->query('end_date', Carbon::now()->toDateString());
-        }
-        $startDate = $request->query('start_date', Carbon::now()->subDays(30)->toDateString());
-        $endDate = $request->query('end_date', Carbon::now()->toDateString());
 
         $query = Order::whereBetween('created_at', [
             Carbon::parse($startDate)->startOfDay(),
