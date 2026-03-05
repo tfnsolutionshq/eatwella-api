@@ -15,6 +15,8 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\Admin\AnalyticsController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\TaxController;
+use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Admin\CareerOpeningController;
 use App\Http\Controllers\CareersController;
 
 /*
@@ -35,6 +37,7 @@ Route::get('/menus', [CustomerController::class, 'listMenus']);
 Route::get('/menus/{menu}', [CustomerController::class, 'showMenu']);
 Route::post('/checkout', [CustomerController::class, 'checkout']);
 Route::get('/orders/track/{order_number}', [CustomerController::class, 'trackOrder']);
+Route::get('/careers/openings', [CareersController::class, 'listOpenings']);
 Route::post('/careers/apply', [CareersController::class, 'store']);
 
 // Cart Routes (Public/Guest + Authenticated) - supports both
@@ -91,6 +94,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/admin/taxes/{tax}/toggle', [TaxController::class, 'toggleStatus']);
     Route::get('/admin/payments', [PaymentController::class, 'index']);
     Route::get('/admin/careers/applications', [CareersController::class, 'index']);
+    Route::get('/admin/careers/openings', [CareerOpeningController::class, 'index']);
+    Route::post('/admin/careers/openings', [CareerOpeningController::class, 'store']);
+    Route::put('/admin/careers/openings/{opening}', [CareerOpeningController::class, 'update']);
+    Route::post('/admin/careers/openings/{opening}', [CareerOpeningController::class, 'update']); // Fallback for multipart/form-data
+    Route::delete('/admin/careers/openings/{opening}', [CareerOpeningController::class, 'destroy']);
+    Route::get('/admin/settings', [SettingsController::class, 'index']);
+    Route::put('/admin/settings', [SettingsController::class, 'update']);
 
     // Registered Users Management
     Route::get('/admin/users', [UserController::class, 'index']);

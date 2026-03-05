@@ -26,6 +26,7 @@ class User extends Authenticatable
         'role',
         'phone',
         'birthday',
+        'loyalty_points',
     ];
 
     /**

@@ -11,6 +11,7 @@ class CareerApplication extends Model
     use HasFactory, HasUuids;
 
     protected $fillable = [
+        'career_opening_id',
         'full_name',
         'email',
         'phone',
@@ -26,4 +27,9 @@ class CareerApplication extends Model
     protected $casts = [
         'submitted_at' => 'datetime',
     ];
+
+    public function opening()
+    {
+        return $this->belongsTo(CareerOpening::class, 'career_opening_id');
+    }
 }

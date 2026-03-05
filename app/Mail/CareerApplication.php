@@ -22,8 +22,15 @@ class CareerApplication extends Mailable
 
     public function envelope(): Envelope
     {
+        $subject = 'New Career Application';
+        if (!empty($this->payload['opening_title'])) {
+            $subject .= ' - ' . $this->payload['opening_title'];
+        } elseif (!empty($this->payload['role'])) {
+            $subject .= ' - ' . $this->payload['role'];
+        }
+
         return new Envelope(
-            subject: 'New Career Application - ' . $this->payload['role']
+            subject: $subject
         );
     }
 

@@ -104,7 +104,7 @@ class CustomerAuthController extends Controller
         return response()->json([
             'total_orders' => $totalOrders,
             'total_spent' => $totalSpent,
-            'loyalty_points' => 0,
+            'loyalty_points' => $user->loyalty_points ?? 0,
             'member_tier' => null
         ]);
     }

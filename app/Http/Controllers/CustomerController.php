@@ -65,7 +65,7 @@ class CustomerController extends Controller
 
         $rules = [
             'order_type' => 'required|in:dine,pickup,delivery',
-            'payment_type' => 'required|in:cash,gateway',
+            'payment_type' => 'required|in:cash,gateway,loyalty_points',
             'items' => 'nullable|array',
             'items.*.menu_id' => 'required_with:items|exists:menus,id',
             'items.*.quantity' => 'required_with:items|integer|min:1',
@@ -191,6 +191,30 @@ class CustomerController extends Controller
                 $orderStatus = 'pending';
                 $paymentStatus = 'unpaid';
                 $paymentMethod = 'paystack';
+            } elseif ($validated['payment_type'] === 'loyalty_points') {
+                if (!$user) {
+                     throw new \Exception('You must be logged in to pay with loyalty points.');
+                }
+
+                $minPoints = (int) (\App\Models\Setting::where('key', 'loyalty_min_points_redemption')->value('value') ?? 100);
+                $conversionRate = (float) (\App\Models\Setting::where('key', 'loyalty_conversion_rate')->value('value') ?? 1.0);
+
+                if ($user->loyalty_points < $minPoints) {
+                     throw new \Exception("You need a minimum of {$minPoints} loyalty points to redeem.");
+                }
+
+                $pointsNeeded = ceil($finalAmount / $conversionRate);
+
+                if ($user->loyalty_points < $pointsNeeded) {
+                     throw new \Exception("Insufficient loyalty points. You need {$pointsNeeded} points for this order.");
+                }
+
+                $user->decrement('loyalty_points', $pointsNeeded);
+
+                $orderNumber = 'ORD-' . strtoupper(Str::random(10));
+                $orderStatus = 'confirmed';
+                $paymentStatus = 'paid';
+                $paymentMethod = 'loyalty_points';
             } else {
                 // Cash payment
                 $orderNumber = 'ORD-' . strtoupper(Str::random(10));
@@ -269,7 +293,7 @@ class CustomerController extends Controller
 
             // Prepare response
             $response = [
-                'message' => $validated['payment_type'] === 'cash'
+                'message' => in_array($validated['payment_type'], ['cash', 'loyalty_points'])
                     ? 'Order placed successfully'
                     : 'Order created, proceed to payment',
                 'order' => $order->load('orderItems', 'invoice')
@@ -283,7 +307,7 @@ class CustomerController extends Controller
             }
 
             // Send email after response data is ready (non-blocking)
-            if ($validated['payment_type'] === 'cash') {
+            if (in_array($validated['payment_type'], ['cash', 'loyalty_points'])) {
                 try {
                     Mail::to($order->customer_email)->send(new OrderPlaced($order));
                 } catch (\Exception $e) {

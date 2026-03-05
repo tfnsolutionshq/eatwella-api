@@ -49,6 +49,16 @@ class OrderController extends Controller
 
             if ($originalStatus !== 'completed') {
                 Mail::to($order->customer_email)->send(new OrderCompleted($order));
+
+                // Award Loyalty Points if registered user and points not yet awarded
+                if ($order->user_id && $order->points_earned == 0) {
+                    $pointsPerOrder = (int) (\App\Models\Setting::where('key', 'loyalty_points_per_order')->value('value') ?? 10);
+                    $user = \App\Models\User::find($order->user_id);
+                    if ($user) {
+                        $user->increment('loyalty_points', $pointsPerOrder);
+                        $order->update(['points_earned' => $pointsPerOrder]);
+                    }
+                }
             }
         }
 

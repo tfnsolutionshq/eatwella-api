@@ -29,6 +29,7 @@ class Order extends Model
         'discount_code',
         'final_amount',
         'status',
+        'points_earned',
         'expires_at'
     ];
 
