@@ -18,6 +18,7 @@ use App\Http\Controllers\Admin\TaxController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\CareerOpeningController;
 use App\Http\Controllers\CareersController;
+use App\Http\Controllers\ReviewController;
 
 /*
 |--------------------------------------------------------------------------
@@ -78,6 +79,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/overview', [CustomerAuthController::class, 'overview']);
         Route::get('/orders', [CustomerAuthController::class, 'recentOrders']);
 
+        Route::post('/reviews', [ReviewController::class, 'store']);
+
         Route::get('/addresses', [AddressController::class, 'index']);
         Route::post('/addresses', [AddressController::class, 'store']);
         Route::put('/addresses/{address}', [AddressController::class, 'update']);
@@ -104,6 +107,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/admin/careers/openings/{opening}', [CareerOpeningController::class, 'destroy']);
     Route::get('/admin/settings', [SettingsController::class, 'index']);
     Route::put('/admin/settings', [SettingsController::class, 'update']);
+
+    // Review Management
+    Route::get('/admin/reviews', [ReviewController::class, 'index']);
+    Route::patch('/admin/reviews/{review}/toggle', [ReviewController::class, 'togglePublish']);
+    Route::delete('/admin/reviews/{review}', [ReviewController::class, 'destroy']);
 
     // Registered Users Management
     Route::get('/admin/users', [UserController::class, 'index']);

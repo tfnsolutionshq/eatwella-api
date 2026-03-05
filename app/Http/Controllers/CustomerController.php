@@ -365,7 +365,7 @@ class CustomerController extends Controller
 
     public function trackOrder($orderNumber)
     {
-        $order = Order::where('order_number', $orderNumber)->with(['orderItems.menu', 'invoice'])->firstOrFail();
+        $order = Order::where('order_number', $orderNumber)->with(['orderItems.menu', 'invoice', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name'])->firstOrFail();
         return $order;
     }
 }
