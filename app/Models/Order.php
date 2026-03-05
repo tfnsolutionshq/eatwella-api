@@ -26,6 +26,8 @@ class Order extends Model
         'delivery_zip',
         'total_amount',
         'discount_amount',
+        'tax_amount',
+        'tax_details',
         'discount_code',
         'final_amount',
         'status',
@@ -35,6 +37,8 @@ class Order extends Model
 
     protected $casts = [
         'expires_at' => 'datetime',
+        'tax_details' => 'array',
+        'tax_amount' => 'decimal:2',
     ];
 
     public function orderItems(): HasMany

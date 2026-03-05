@@ -51,6 +51,9 @@ Route::delete('/cart/{itemId}', [CartController::class, 'destroy']);
 // Discount Validation (Public)
 Route::post('/discounts/validate', [DiscountController::class, 'validateCode']);
 
+// Taxes
+Route::get('/taxes', [TaxController::class, 'list']);
+
 // Category
 Route::get('/categories', [CategoryController::class, 'index']);
 

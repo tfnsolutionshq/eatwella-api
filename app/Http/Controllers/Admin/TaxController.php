@@ -28,6 +28,16 @@ class TaxController extends Controller
     }
 
     /**
+     * Publicly list active taxes.
+     */
+    public function list(Request $request)
+    {
+        $query = Tax::where('is_active', true)->with('categories');
+
+        return $query->get();
+    }
+
+    /**
      * Store a newly created resource in storage.
      */
     public function store(Request $request)
@@ -103,7 +113,16 @@ class TaxController extends Controller
             'is_active' => 'boolean'
         ]);
 
-        $tax->update($validated);
+        $tax->update([
+            'name' => $validated['name'] ?? $tax->name,
+            'type' => $validated['type'] ?? $tax->type,
+            'description' => $validated['description'] ?? $tax->description,
+            'rate' => $validated['rate'] ?? $tax->rate,
+            'priority' => $validated['priority'] ?? $tax->priority,
+            'is_inclusive' => $validated['is_inclusive'] ?? $tax->is_inclusive,
+            'branches' => $validated['branches'] ?? $tax->branches,
+            'is_active' => $validated['is_active'] ?? $tax->is_active,
+        ]);
 
         if (isset($validated['category_ids'])) {
             $tax->categories()->sync($validated['category_ids']);
@@ -123,11 +142,11 @@ class TaxController extends Controller
 
         $tax->delete();
 
-        return response()->json(['message' => 'Tax rule deleted successfully']);
+        return response()->json(['message' => 'Tax deleted successfully']);
     }
 
     /**
-     * Toggle the active status of the tax rule.
+     * Toggle the active status of the tax.
      */
     public function toggleStatus(Request $request, Tax $tax)
     {
@@ -135,11 +154,12 @@ class TaxController extends Controller
             return $response;
         }
 
-        $tax->update(['is_active' => !$tax->is_active]);
+        $tax->is_active = !$tax->is_active;
+        $tax->save();
 
         return response()->json([
-            'message' => 'Tax rule status updated successfully',
-            'is_active' => $tax->is_active
+            'message' => 'Tax status updated successfully',
+            'tax' => $tax
         ]);
     }
 }
