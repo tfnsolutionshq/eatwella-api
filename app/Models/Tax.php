@@ -29,12 +29,4 @@ class Tax extends Model
         'branches' => 'array',
         'priority' => 'integer'
     ];
-
-    /**
-     * The categories that belong to the tax.
-     */
-    public function categories(): BelongsToMany
-    {
-        return $this->belongsToMany(Category::class, 'category_tax');
-    }
 }

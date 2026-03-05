@@ -131,9 +131,9 @@ class CustomerController extends Controller
             // Calculate Total and validate availability
             $totalAmount = 0;
             $orderItemsData = [];
-            
+
             // Tax Calculation Variables
-            $activeTaxes = \App\Models\Tax::where('is_active', true)->with('categories')->get();
+            $activeTaxes = \App\Models\Tax::where('is_active', true)->get();
             $totalTaxAmount = 0;
             $totalExclusiveTax = 0;
             $taxDetails = [];
@@ -146,32 +146,6 @@ class CustomerController extends Controller
 
                 $subtotal = $menu->price * $item['quantity'];
                 $totalAmount += $subtotal;
-                
-                // Calculate Taxes (Pre-discount)
-                $itemTaxes = $activeTaxes->filter(function ($tax) use ($menu) {
-                    return $tax->categories->contains('id', $menu->category_id);
-                });
-
-                foreach ($itemTaxes as $tax) {
-                    $taxValue = 0;
-                    if ($tax->is_inclusive) {
-                        $taxValue = $subtotal - ($subtotal / (1 + ($tax->rate / 100)));
-                    } else {
-                        $taxValue = $subtotal * ($tax->rate / 100);
-                        $totalExclusiveTax += $taxValue;
-                    }
-
-                    $totalTaxAmount += $taxValue;
-                    
-                    if (!isset($taxDetails[$tax->name])) {
-                        $taxDetails[$tax->name] = [
-                            'rate' => (float)$tax->rate,
-                            'type' => $tax->type,
-                            'amount' => 0
-                        ];
-                    }
-                    $taxDetails[$tax->name]['amount'] += $taxValue;
-                }
 
                 $orderItemsData[] = [
                     'menu_id' => $menu->id,
@@ -197,19 +171,39 @@ class CustomerController extends Controller
                 }
             }
 
-            // Adjust Tax for Discount
-            if ($discountAmount > 0 && $totalAmount > 0) {
-                $discountRatio = $discountAmount / $totalAmount;
-                
-                $totalTaxAmount -= ($totalTaxAmount * $discountRatio);
-                $totalExclusiveTax -= ($totalExclusiveTax * $discountRatio);
-                
-                foreach ($taxDetails as &$detail) {
-                    $detail['amount'] -= ($detail['amount'] * $discountRatio);
-                    $detail['amount'] = round($detail['amount'], 2);
+            // Calculate Taxes on Total Amount (Post-discount base)
+            $taxableAmount = $totalAmount - $discountAmount;
+
+            if ($taxableAmount > 0) {
+                foreach ($activeTaxes as $tax) {
+                    $taxValue = 0;
+                    if ($tax->is_inclusive) {
+                        // Inclusive tax is extracted from the amount
+                        $taxValue = $taxableAmount - ($taxableAmount / (1 + ($tax->rate / 100)));
+                    } else {
+                        // Exclusive tax is added on top of the amount
+                        $taxValue = $taxableAmount * ($tax->rate / 100);
+                        $totalExclusiveTax += $taxValue;
+                    }
+
+                    $totalTaxAmount += $taxValue;
+
+                    if (!isset($taxDetails[$tax->name])) {
+                        $taxDetails[$tax->name] = [
+                            'rate' => (float)$tax->rate,
+                            'type' => $tax->type,
+                            'amount' => 0
+                        ];
+                    }
+                    $taxDetails[$tax->name]['amount'] += $taxValue;
                 }
             }
-            
+
+            // Round tax details
+            foreach ($taxDetails as &$detail) {
+                $detail['amount'] = round($detail['amount'], 2);
+            }
+
             $totalTaxAmount = round($totalTaxAmount, 2);
             $totalExclusiveTax = round($totalExclusiveTax, 2);
 

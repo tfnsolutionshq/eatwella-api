@@ -18,7 +18,7 @@ class TaxController extends Controller
             return $response;
         }
 
-        $query = Tax::with('categories');
+        $query = Tax::query();
 
         if ($request->has('active')) {
             $query->where('is_active', $request->boolean('active'));
@@ -32,7 +32,7 @@ class TaxController extends Controller
      */
     public function list(Request $request)
     {
-        $query = Tax::where('is_active', true)->with('categories');
+        $query = Tax::where('is_active', true);
 
         return $query->get();
     }
@@ -55,8 +55,6 @@ class TaxController extends Controller
             'is_inclusive' => 'required|boolean',
             'branches' => 'nullable|array',
             'branches.*' => 'string', // Assuming branch names or IDs are strings
-            'category_ids' => 'nullable|array',
-            'category_ids.*' => 'exists:categories,id',
             'is_active' => 'boolean'
         ]);
 
@@ -71,11 +69,7 @@ class TaxController extends Controller
             'is_active' => $validated['is_active'] ?? true,
         ]);
 
-        if (!empty($validated['category_ids'])) {
-            $tax->categories()->attach($validated['category_ids']);
-        }
-
-        return response()->json($tax->load('categories'), 201);
+        return response()->json($tax, 201);
     }
 
     /**
@@ -87,7 +81,7 @@ class TaxController extends Controller
             return $response;
         }
 
-        return $tax->load('categories');
+        return $tax;
     }
 
     /**
@@ -108,8 +102,6 @@ class TaxController extends Controller
             'is_inclusive' => 'sometimes|required|boolean',
             'branches' => 'nullable|array',
             'branches.*' => 'string',
-            'category_ids' => 'nullable|array',
-            'category_ids.*' => 'exists:categories,id',
             'is_active' => 'boolean'
         ]);
 
@@ -124,11 +116,7 @@ class TaxController extends Controller
             'is_active' => $validated['is_active'] ?? $tax->is_active,
         ]);
 
-        if (isset($validated['category_ids'])) {
-            $tax->categories()->sync($validated['category_ids']);
-        }
-
-        return response()->json($tax->load('categories'));
+        return response()->json($tax);
     }
 
     /**
