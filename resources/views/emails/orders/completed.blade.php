@@ -341,6 +341,17 @@
                 </div>
             </div>
             
+            <!-- Feedback Section -->
+            <div class="message-box" style="margin-top: 30px; border-top: 4px solid #28a745; background-color: #f1f8f3;">
+                <h3 style="color: #28a745; margin-bottom: 10px; font-size: 20px;">⭐ How was your meal?</h3>
+                <p style="color: #555; font-size: 16px; margin-bottom: 15px;">
+                    We'd love to hear from you! Simply <strong>reply to this email</strong> with your rating (1-5) and any comments.
+                </p>
+                <p style="font-size: 14px; color: #777;">
+                    Your feedback helps us serve you better. We read every reply!
+                </p>
+            </div>
+            
             <!-- Action Button -->
             <div style="text-align: center;">
                 <a href="https://eatwella.tfnsolutions.us" class="action-button">
