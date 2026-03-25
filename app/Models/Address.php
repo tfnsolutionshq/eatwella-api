@@ -11,14 +11,18 @@ class Address extends Model
 
     protected $fillable = [
         'user_id',
+        'zone_id',
         'street_address',
-        'state',
         'closest_landmark',
-        'postal_code',
     ];
 
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function zone()
+    {
+        return $this->belongsTo(Zone::class);
     }
 }

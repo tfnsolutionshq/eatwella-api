@@ -16,13 +16,24 @@ class CustomerAuthController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:6',
+            'phone' => 'nullable|string|max:20',
+            'zone_id' => 'required|exists:zones,id',
+            'street_address' => 'required|string',
+            'closest_landmark' => 'nullable|string',
         ]);
 
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => $validated['password'],
+            'phone' => $validated['phone'] ?? null,
             'role' => 'customer',
+        ]);
+
+        $user->addresses()->create([
+            'zone_id' => $validated['zone_id'],
+            'street_address' => $validated['street_address'],
+            'closest_landmark' => $validated['closest_landmark'] ?? null,
         ]);
 
         $token = $user->createToken('customer-token')->plainTextToken;

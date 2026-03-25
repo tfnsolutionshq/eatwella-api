@@ -1,0 +1,190 @@
+{
+  "info": {
+    "name": "Eatwella - Supervisor & Delivery Agent",
+    "_postman_id": "eatwella-delivery-collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost/eatwella/public/api"
+    },
+    {
+      "key": "supervisor_token",
+      "value": ""
+    },
+    {
+      "key": "delivery_agent_token",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Supervisor",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.token) { pm.collectionVariables.set('supervisor_token', json.token); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"supervisor@example.com\",\n  \"password\": \"password\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/login",
+              "host": ["{{base_url}}"],
+              "path": ["login"]
+            }
+          }
+        },
+        {
+          "name": "Get All Delivery Orders",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{supervisor_token}}" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/supervisor/orders",
+              "host": ["{{base_url}}"],
+              "path": ["supervisor", "orders"],
+              "query": [
+                { "key": "status", "value": "pending", "disabled": true },
+                { "key": "assigned", "value": "0", "disabled": true, "description": "0 = unassigned, 1 = assigned" },
+                { "key": "per_page", "value": "15", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Single Delivery Order",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{supervisor_token}}" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/supervisor/orders/:order_id",
+              "host": ["{{base_url}}"],
+              "path": ["supervisor", "orders", ":order_id"],
+              "variable": [
+                { "key": "order_id", "value": "" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Assign Delivery Agent to Order",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{supervisor_token}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"delivery_agent_id\": \"uuid-of-delivery-agent\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/supervisor/orders/:order_id/assign-delivery-agent",
+              "host": ["{{base_url}}"],
+              "path": ["supervisor", "orders", ":order_id", "assign-delivery-agent"],
+              "variable": [
+                { "key": "order_id", "value": "" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get All Users (Find Delivery Agents)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{supervisor_token}}" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/users",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "users"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Delivery Agent",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.token) { pm.collectionVariables.set('delivery_agent_token', json.token); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"agent@example.com\",\n  \"password\": \"password\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/login",
+              "host": ["{{base_url}}"],
+              "path": ["login"]
+            }
+          }
+        },
+        {
+          "name": "Get My Assigned Orders",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{delivery_agent_token}}" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/delivery-agent/orders",
+              "host": ["{{base_url}}"],
+              "path": ["delivery-agent", "orders"],
+              "query": [
+                { "key": "status", "value": "pending", "disabled": true },
+                { "key": "per_page", "value": "15", "disabled": true }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

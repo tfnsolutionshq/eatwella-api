@@ -15,11 +15,15 @@ class UserController extends Controller
         }
         $query = User::with('addresses');
 
+        if ($request->filled('role')) {
+            $query->where('role', $request->role);
+        }
+
         if ($request->filled('search')) {
-            $query->where(function($q) use ($request) {
-                $q->where('name', 'like', '%' . $request->search . '%')
-                  ->orWhere('email', 'like', '%' . $request->search . '%')
-                  ->orWhere('phone', 'like', '%' . $request->search . '%');
+            $query->where(function ($q) use ($request) {
+                $q->where('name', 'like', '%'.$request->search.'%')
+                    ->orWhere('email', 'like', '%'.$request->search.'%')
+                    ->orWhere('phone', 'like', '%'.$request->search.'%');
             });
         }
 
@@ -31,10 +35,11 @@ class UserController extends Controller
         if ($response = $this->requireRole($request, ['admin'])) {
             return $response;
         }
+
         return $user->load(['addresses', 'orders.orderItems.menu']);
     }
 
-    public function storeCashier(Request $request)
+    public function storeStaff(Request $request)
     {
         if ($response = $this->requireRole($request, ['admin'])) {
             return $response;
@@ -44,15 +49,23 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:6',
+            'role' => 'required|in:cashier,supervisor,delivery_agent,kitchen',
         ]);
 
-        $cashier = User::create([
+        $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => $validated['password'],
-            'role' => 'cashier',
+            'role' => $validated['role'],
         ]);
 
-        return response()->json($cashier, 201);
+        return response()->json($user, 201);
+    }
+
+    public function storeCashier(Request $request)
+    {
+        $request->merge(['role' => 'cashier']);
+
+        return $this->storeStaff($request);
     }
 }

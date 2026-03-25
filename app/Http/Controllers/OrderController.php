@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\OrderCompleted;
 use App\Models\Order;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
-use App\Mail\OrderCompleted;
 
 class OrderController extends Controller
 {
@@ -14,7 +14,7 @@ class OrderController extends Controller
         if ($response = $this->requireRole($request, ['admin', 'cashier'])) {
             return $response;
         }
-        $query = Order::with(['orderItems.menu', 'user.addresses', 'cashier', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name']);
+        $query = Order::with(['orderItems.menu', 'user.addresses', 'cashier', 'deliveryAgent', 'assignedBySupervisor', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name']);
 
         if ($request->has('status')) {
             $query->where('status', $request->status);
@@ -28,41 +28,213 @@ class OrderController extends Controller
         if ($response = $this->requireRole($request, ['admin', 'cashier'])) {
             return $response;
         }
-        return $order->load(['orderItems.menu', 'invoice', 'user.addresses', 'cashier', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name']);
+
+        return $order->load(['orderItems.menu', 'invoice', 'user.addresses', 'cashier', 'deliveryAgent', 'assignedBySupervisor', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name']);
     }
 
     public function update(Request $request, Order $order)
     {
-        if ($response = $this->requireRole($request, ['admin', 'cashier'])) {
+        if ($response = $this->requireRole($request, ['admin', 'cashier', 'supervisor'])) {
             return $response;
         }
+
+        $user = $request->user();
+
+        // Cashier can only update their own orders; other cashiers and supervisor can update for them
+        if ($user->role === 'cashier' && $order->cashier_id !== $user->id) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $validated = $request->validate([
-            'status' => 'required|in:pending,processing,completed,cancelled'
+            'status' => 'required|in:pending,processing,confirmed,ready,dispatched,completed,cancelled',
         ]);
 
         $originalStatus = $order->status;
-        $order->update(['status' => $validated['status']]);
 
-        // Clear expiry when admin marks as completed
+        $updateData = ['status' => $validated['status']];
+
         if ($validated['status'] === 'completed') {
-            $order->update(['expires_at' => null]);
+            $updateData['expires_at']      = null;
+            $updateData['completed_by_id'] = $user->id;
+            $updateData['completed_at']    = now();
+        }
 
-            if ($originalStatus !== 'completed') {
-                Mail::to($order->customer_email)->send(new OrderCompleted($order));
+        $order->update($updateData);
 
-                // Award Loyalty Points if registered user and points not yet awarded
-                if ($order->user_id && $order->points_earned == 0) {
-                    $pointsPerOrder = (int) (\App\Models\Setting::where('key', 'loyalty_points_per_order')->value('value') ?? 10);
-                    $user = \App\Models\User::find($order->user_id);
-                    if ($user) {
-                        $user->increment('loyalty_points', $pointsPerOrder);
-                        $order->update(['points_earned' => $pointsPerOrder]);
-                    }
+        if ($validated['status'] === 'completed' && $originalStatus !== 'completed') {
+            Mail::to($order->customer_email)->send(new OrderCompleted($order));
+
+            if ($order->user_id && $order->points_earned == 0) {
+                $pointsPerOrder = (int) (\App\Models\Setting::where('key', 'loyalty_points_per_order')->value('value') ?? 10);
+                $customer = \App\Models\User::find($order->user_id);
+                if ($customer) {
+                    $customer->increment('loyalty_points', $pointsPerOrder);
+                    $order->update(['points_earned' => $pointsPerOrder]);
                 }
             }
         }
 
-        return response()->json($order);
+        return response()->json($order->load('completedBy'));
+    }
+
+    public function supervisorIndex(Request $request)
+    {
+        if ($response = $this->requireRole($request, ['supervisor'])) {
+            return $response;
+        }
+
+        $query = Order::with(['orderItems.menu', 'user.addresses', 'cashier', 'deliveryAgent', 'assignedBySupervisor', 'completedBy', 'invoice']);
+
+        if ($request->has('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('order_type')) {
+            $query->where('order_type', $request->order_type);
+        }
+
+        if ($request->filled('assigned')) {
+            if ($request->assigned === '1') {
+                $query->whereNotNull('delivery_agent_id');
+            } elseif ($request->assigned === '0') {
+                $query->whereNull('delivery_agent_id');
+            }
+        }
+
+        return $query->latest()->paginate($request->get('per_page', 15));
+    }
+
+    public function supervisorShow(Request $request, Order $order)
+    {
+        if ($response = $this->requireRole($request, ['supervisor'])) {
+            return $response;
+        }
+
+        return $order->load(['orderItems.menu', 'invoice', 'user.addresses', 'cashier', 'deliveryAgent', 'assignedBySupervisor', 'completedBy']);
+    }
+
+    public function assignDeliveryAgent(Request $request, Order $order)
+    {
+        if ($response = $this->requireRole($request, ['supervisor'])) {
+            return $response;
+        }
+
+        if ($order->order_type !== 'delivery') {
+            return response()->json(['message' => 'Only delivery orders can be assigned'], 422);
+        }
+
+        $validated = $request->validate([
+            'delivery_agent_id' => 'required|exists:users,id',
+        ]);
+
+        $agent = \App\Models\User::findOrFail($validated['delivery_agent_id']);
+        if ($agent->role !== 'delivery_agent') {
+            return response()->json(['message' => 'User is not a delivery agent'], 422);
+        }
+
+        $order->update([
+            'delivery_agent_id' => $agent->id,
+            'assigned_by_supervisor_id' => $request->user()->id,
+            'assigned_at' => now(),
+            'status' => 'dispatched',
+        ]);
+
+        return response()->json($order->load(['orderItems.menu', 'invoice', 'user.addresses', 'cashier', 'deliveryAgent', 'assignedBySupervisor']));
+    }
+
+    public function deliveryAgentShow(Request $request, Order $order)
+    {
+        if ($response = $this->requireRole($request, ['delivery_agent'])) {
+            return $response;
+        }
+
+        if ($order->delivery_agent_id !== $request->user()->id) {
+            return response()->json(['message' => 'Order not found'], 404);
+        }
+
+        return $order->load(['orderItems.menu', 'invoice', 'user.addresses', 'cashier', 'deliveryAgent', 'assignedBySupervisor']);
+    }
+
+    public function completeDelivery(Request $request, Order $order)
+    {
+        if ($response = $this->requireRole($request, ['delivery_agent'])) {
+            return $response;
+        }
+
+        if ($order->delivery_agent_id !== $request->user()->id) {
+            return response()->json(['message' => 'Order not found'], 404);
+        }
+
+        if ($order->status === 'completed') {
+            return response()->json(['message' => 'Order already completed'], 422);
+        }
+
+        $request->validate([
+            'proof_image' => 'required|image|max:5120',
+            'note'        => 'nullable|string|max:500',
+        ]);
+
+        $path = $request->file('proof_image')->store('delivery-proofs', 'public');
+
+        $order->update([
+            'status'                => 'completed',
+            'delivery_proof_image'  => $path,
+            'delivery_note'         => $request->note,
+            'completed_by_id'       => $request->user()->id,
+            'completed_at'          => now(),
+            'expires_at'            => null,
+        ]);
+
+        return response()->json($order->load(['orderItems.menu', 'invoice', 'deliveryAgent', 'assignedBySupervisor', 'completedBy']));
+    }
+
+    public function supervisorCompleteDelivery(Request $request, Order $order)
+    {
+        if ($response = $this->requireRole($request, ['supervisor'])) {
+            return $response;
+        }
+
+        if ($order->order_type !== 'delivery') {
+            return response()->json(['message' => 'Only delivery orders can be completed here'], 422);
+        }
+
+        if ($order->status === 'completed') {
+            return response()->json(['message' => 'Order already completed'], 422);
+        }
+
+        $request->validate([
+            'proof_image' => 'required|image|max:5120',
+            'note'        => 'nullable|string|max:500',
+        ]);
+
+        $path = $request->file('proof_image')->store('delivery-proofs', 'public');
+
+        $order->update([
+            'status'                => 'completed',
+            'delivery_proof_image'  => $path,
+            'delivery_note'         => $request->note,
+            'completed_by_id'       => $request->user()->id,
+            'completed_at'          => now(),
+            'expires_at'            => null,
+        ]);
+
+        return response()->json($order->load(['orderItems.menu', 'invoice', 'deliveryAgent', 'assignedBySupervisor', 'completedBy']));
+    }
+
+    public function deliveryAgentOrders(Request $request)
+    {
+        if ($response = $this->requireRole($request, ['delivery_agent'])) {
+            return $response;
+        }
+
+        $query = Order::with(['orderItems.menu', 'invoice', 'user.addresses', 'cashier', 'deliveryAgent', 'assignedBySupervisor'])
+            ->where('delivery_agent_id', $request->user()->id);
+
+        if ($request->has('status')) {
+            $query->where('status', $request->status);
+        }
+
+        return $query->latest()->paginate($request->get('per_page', 15));
     }
 
     public function cashierOrders(Request $request)
@@ -71,7 +243,7 @@ class OrderController extends Controller
             return $response;
         }
 
-        $query = Order::with(['orderItems.menu', 'invoice', 'user.addresses', 'cashier', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name'])
+        $query = Order::with(['orderItems.menu', 'invoice', 'user.addresses', 'cashier', 'deliveryAgent', 'assignedBySupervisor', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name'])
             ->where('cashier_id', $request->user()->id);
 
         if ($request->has('status')) {
@@ -87,7 +259,7 @@ class OrderController extends Controller
             return $response;
         }
 
-        $query = Order::with(['orderItems.menu', 'invoice', 'user.addresses', 'cashier', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name'])
+        $query = Order::with(['orderItems.menu', 'invoice', 'user.addresses', 'cashier', 'deliveryAgent', 'assignedBySupervisor', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name'])
             ->whereNotNull('cashier_id');
 
         if ($request->has('status')) {

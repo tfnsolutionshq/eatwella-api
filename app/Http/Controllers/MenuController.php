@@ -32,9 +32,10 @@ class MenuController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
-            'images' => 'required|array|min:1', // Compulsory, at least one
+            'images' => 'required|array|min:1',
             'images.*' => 'image|max:2048',
-            'is_available' => 'boolean'
+            'is_available' => 'boolean',
+            'requires_takeaway' => 'boolean',
         ]);
 
         $imagePaths = [];
@@ -68,9 +69,10 @@ class MenuController extends Controller
             'name' => 'string|max:255',
             'description' => 'nullable|string',
             'price' => 'numeric|min:0',
-            'images' => 'array|min:1', // If provided, must be at least one
+            'images' => 'array|min:1',
             'images.*' => 'image|max:2048',
-            'is_available' => 'boolean'
+            'is_available' => 'boolean',
+            'requires_takeaway' => 'boolean',
         ]);
 
         if ($request->hasFile('images')) {

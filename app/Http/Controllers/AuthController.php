@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Models\User;
 
 class AuthController extends Controller
 {
@@ -17,11 +16,13 @@ class AuthController extends Controller
 
         if (Auth::attempt($credentials)) {
             $user = Auth::user();
-            if (!in_array($user->role, ['admin', 'cashier'], true)) {
+            if (! in_array($user->role, ['admin', 'cashier', 'supervisor', 'delivery_agent', 'kitchen'], true)) {
                 Auth::logout();
+
                 return response()->json(['message' => 'Forbidden'], 403);
             }
             $token = $user->createToken('admin-token')->plainTextToken;
+
             return response()->json(['token' => $token, 'user' => $user]);
         }
 
@@ -31,6 +32,7 @@ class AuthController extends Controller
     public function logout(Request $request)
     {
         $request->user()->currentAccessToken()->delete();
+
         return response()->json(['message' => 'Logged out']);
     }
 }

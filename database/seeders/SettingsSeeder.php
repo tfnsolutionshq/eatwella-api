@@ -2,9 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
-use Illuminate\Database\Seeder;
 use App\Models\Setting;
+use Illuminate\Database\Seeder;
 
 class SettingsSeeder extends Seeder
 {
@@ -26,6 +25,11 @@ class SettingsSeeder extends Seeder
         Setting::firstOrCreate(
             ['key' => 'loyalty_conversion_rate'],
             ['value' => '1.0', 'description' => 'Value of 1 point in currency (e.g. 1 point = 1 NGN)']
+        );
+
+        Setting::firstOrCreate(
+            ['key' => 'delivery_fee'],
+            ['value' => '0', 'description' => 'Flat delivery fee applied to delivery orders']
         );
     }
 }

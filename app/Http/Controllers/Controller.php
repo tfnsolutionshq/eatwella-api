@@ -11,7 +11,10 @@ abstract class Controller
     {
         $user = $request->user();
 
-        if (!$user || !in_array($user->role, $roles, true)) {
+        $role = is_string($user?->role) ? strtolower(trim($user->role)) : null;
+        $allowedRoles = array_map(static fn ($r) => strtolower(trim((string) $r)), $roles);
+
+        if (! $user || ! in_array($role, $allowedRoles, true)) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 

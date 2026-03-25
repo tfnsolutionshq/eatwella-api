@@ -17,11 +17,13 @@ class Menu extends Model
         'description',
         'price',
         'images',
-        'is_available'
+        'is_available',
+        'requires_takeaway',
     ];
 
     protected $casts = [
-        'images' => 'array',
+        'images'             => 'array',
+        'requires_takeaway'  => 'boolean',
     ];
 
     // Accessor to get full image URLs

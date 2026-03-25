@@ -31,10 +31,23 @@ class AnalyticsController extends Controller
         $totalOrders = $query->count();
         $averageOrderValue = $totalOrders > 0 ? $totalRevenue / $totalOrders : 0;
 
+        // Calculate average completion time
+        $driver = DB::connection()->getDriverName();
+        $completedQuery = clone $query;
+        $completedQuery->where('status', 'completed')->whereNotNull('completed_at');
+
+        if ($driver === 'sqlite') {
+            $avgCompletionTime = $completedQuery->select(DB::raw("AVG((julianday(completed_at) - julianday(created_at)) * 24 * 60) as avg_completion_minutes"))->value('avg_completion_minutes');
+        } else {
+            // MySQL/PostgreSQL
+            $avgCompletionTime = $completedQuery->select(DB::raw("AVG(TIMESTAMPDIFF(MINUTE, created_at, completed_at)) as avg_completion_minutes"))->value('avg_completion_minutes');
+        }
+
         return response()->json([
             'total_revenue' => round($totalRevenue, 2),
             'total_orders' => $totalOrders,
             'average_order_value' => round($averageOrderValue, 2),
+            'average_completion_minutes' => round($avgCompletionTime ?? 0, 2),
             'period' => [
                 'start' => $startDate,
                 'end' => $endDate
@@ -94,10 +107,15 @@ class AnalyticsController extends Controller
             ? "strftime('%Y-%m-%d', created_at)"
             : "DATE(created_at)";
 
+        $avgCompletionExpression = $driver === 'sqlite'
+            ? "AVG((julianday(completed_at) - julianday(created_at)) * 24 * 60)"
+            : "AVG(TIMESTAMPDIFF(MINUTE, created_at, completed_at))";
+
         $dailySales = Order::select(
                 DB::raw("$groupByExpression as date"),
                 DB::raw('SUM(final_amount) as revenue'),
-                DB::raw('COUNT(*) as orders_count')
+                DB::raw('COUNT(*) as orders_count'),
+                DB::raw("ROUND($avgCompletionExpression, 2) as avg_completion_minutes")
             )
             ->whereBetween('created_at', [
                 Carbon::parse($startDate)->startOfDay(),

@@ -9,24 +9,27 @@ class AddressController extends Controller
 {
     public function index(Request $request)
     {
-        $addresses = $request->user()->addresses;
-        return response()->json($addresses);
+        return response()->json($request->user()->addresses()->with('zone.city')->get());
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'street_address' => 'required|string|max:255',
-            'state' => 'required|string|max:100',
-            'closest_landmark' => 'nullable|string|max:255',
-            'postal_code' => 'nullable|string|max:20',
+            'zone_id'           => 'required|exists:zones,id',
+            'street_address'    => 'required|string|max:255',
+            'closest_landmark'  => 'nullable|string|max:255',
         ]);
+
+        $zone = \App\Models\Zone::findOrFail($validated['zone_id']);
+        if (! $zone->is_active) {
+            return response()->json(['message' => 'Selected zone is not available for delivery'], 422);
+        }
 
         $address = $request->user()->addresses()->create($validated);
 
         return response()->json([
             'message' => 'Address added successfully',
-            'address' => $address
+            'address' => $address->load('zone.city'),
         ], 201);
     }
 
@@ -37,17 +40,21 @@ class AddressController extends Controller
         }
 
         $validated = $request->validate([
-            'street_address' => 'required|string|max:255',
-            'state' => 'required|string|max:100',
-            'closest_landmark' => 'nullable|string|max:255',
-            'postal_code' => 'nullable|string|max:20',
+            'zone_id'           => 'required|exists:zones,id',
+            'street_address'    => 'required|string|max:255',
+            'closest_landmark'  => 'nullable|string|max:255',
         ]);
+
+        $zone = \App\Models\Zone::findOrFail($validated['zone_id']);
+        if (! $zone->is_active) {
+            return response()->json(['message' => 'Selected zone is not available for delivery'], 422);
+        }
 
         $address->update($validated);
 
         return response()->json([
             'message' => 'Address updated successfully',
-            'address' => $address
+            'address' => $address->load('zone.city'),
         ]);
     }
 

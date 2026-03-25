@@ -1,24 +1,28 @@
 <?php
 
+use App\Http\Controllers\AddressController;
+use App\Http\Controllers\Admin\AnalyticsController;
+use App\Http\Controllers\Admin\CareerOpeningController;
+use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Admin\TaxController;
+use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CareersController;
+use App\Http\Controllers\CartController;
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\CustomerAuthController;
+use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\DiningTableController;
+use App\Http\Controllers\DiscountController;
+use App\Http\Controllers\KitchenController;
+use App\Http\Controllers\LocationController;
+use App\Http\Controllers\MenuController;
+use App\Http\Controllers\OrderController;
+use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\RecommendationController;
+use App\Http\Controllers\ReviewController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\CategoryController;
-use App\Http\Controllers\MenuController;
-use App\Http\Controllers\DiscountController;
-use App\Http\Controllers\OrderController;
-use App\Http\Controllers\CustomerController;
-use App\Http\Controllers\CustomerAuthController;
-use App\Http\Controllers\AddressController;
-use App\Http\Controllers\CartController;
-use App\Http\Controllers\PaymentController;
-use App\Http\Controllers\Admin\AnalyticsController;
-use App\Http\Controllers\Admin\UserController;
-use App\Http\Controllers\Admin\TaxController;
-use App\Http\Controllers\Admin\SettingsController;
-use App\Http\Controllers\Admin\CareerOpeningController;
-use App\Http\Controllers\CareersController;
-use App\Http\Controllers\ReviewController;
 
 /*
 |--------------------------------------------------------------------------
@@ -36,10 +40,19 @@ Route::post('/customer/login', [CustomerAuthController::class, 'login']);
 // Customer / Guest Routes
 Route::get('/menus', [CustomerController::class, 'listMenus']);
 Route::get('/menus/{menu}', [CustomerController::class, 'showMenu']);
+Route::get('/takeaway-price', [CustomerController::class, 'takeawayPrice']);
 Route::post('/checkout', [CustomerController::class, 'checkout']);
 Route::get('/orders/track/{order_number}', [CustomerController::class, 'trackOrder']);
 Route::get('/careers/openings', [CareersController::class, 'listOpenings']);
 Route::post('/careers/apply', [CareersController::class, 'store']);
+
+// Locations / Zones
+Route::get('/states', [LocationController::class, 'getStates']);
+Route::get('/cities', [LocationController::class, 'getCities']);
+Route::get('/zones', [LocationController::class, 'getZones']);
+
+// Dining Tables
+Route::get('/tables', [DiningTableController::class, 'index']);
 
 // Cart Routes (Public/Guest + Authenticated) - supports both
 Route::get('/cart', [CartController::class, 'index']);
@@ -48,6 +61,10 @@ Route::post('/cart/apply-discount', [CartController::class, 'applyDiscount']);
 Route::delete('/cart/remove-discount', [CartController::class, 'removeDiscount']);
 Route::put('/cart/{itemId}', [CartController::class, 'update']);
 Route::delete('/cart/{itemId}', [CartController::class, 'destroy']);
+
+// Recommendations
+Route::post('/recommendations/cart', [RecommendationController::class, 'getCartRecommendations']);
+Route::post('/recommendations/track', [RecommendationController::class, 'trackInteraction']);
 
 // Discount Validation (Public)
 Route::post('/discounts/validate', [DiscountController::class, 'validateCode']);
@@ -98,6 +115,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('admin/discounts', DiscountController::class);
     Route::apiResource('admin/taxes', TaxController::class);
     Route::patch('/admin/taxes/{tax}/toggle', [TaxController::class, 'toggleStatus']);
+
+    // Dining Tables Management
+    Route::apiResource('admin/tables', DiningTableController::class);
+    Route::patch('/admin/tables/{table}/toggle', [DiningTableController::class, 'toggle']);
+
     Route::get('/admin/payments', [PaymentController::class, 'index']);
     Route::get('/admin/careers/applications', [CareersController::class, 'index']);
     Route::get('/admin/careers/openings', [CareerOpeningController::class, 'index']);
@@ -107,6 +129,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/admin/careers/openings/{opening}', [CareerOpeningController::class, 'destroy']);
     Route::get('/admin/settings', [SettingsController::class, 'index']);
     Route::put('/admin/settings', [SettingsController::class, 'update']);
+    Route::get('/admin/takeaway-price', [SettingsController::class, 'takeawayPrice']);
+    Route::put('/admin/takeaway-price', [SettingsController::class, 'updateTakeawayPrice']);
 
     // Review Management
     Route::get('/admin/reviews', [ReviewController::class, 'index']);
@@ -117,6 +141,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/users', [UserController::class, 'index']);
     Route::get('/admin/users/{user}', [UserController::class, 'show']);
     Route::post('/admin/cashiers', [UserController::class, 'storeCashier']);
+    Route::post('/admin/staff', [UserController::class, 'storeStaff']);
 
     // Order Management
     Route::get('/admin/orders', [OrderController::class, 'index']);
@@ -124,6 +149,18 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/orders/{order}', [OrderController::class, 'show']);
     Route::put('/admin/orders/{order}', [OrderController::class, 'update']);
     Route::get('/cashier/orders', [OrderController::class, 'cashierOrders']);
+    Route::get('/supervisor/orders', [OrderController::class, 'supervisorIndex']);
+    Route::get('/supervisor/orders/{order}', [OrderController::class, 'supervisorShow']);
+    Route::patch('/supervisor/orders/{order}/assign-delivery-agent', [OrderController::class, 'assignDeliveryAgent']);
+    Route::post('/supervisor/orders/{order}/complete', [OrderController::class, 'supervisorCompleteDelivery']);
+    Route::put('/supervisor/orders/{order}', [OrderController::class, 'update']);
+    Route::get('/delivery-agent/orders', [OrderController::class, 'deliveryAgentOrders']);
+    Route::get('/delivery-agent/orders/{order}', [OrderController::class, 'deliveryAgentShow']);
+    Route::post('/delivery-agent/orders/{order}/complete', [OrderController::class, 'completeDelivery']);
+
+    // Kitchen Routes
+    Route::get('/kitchen/orders/confirmed', [KitchenController::class, 'getConfirmedOrders']);
+    Route::post('/kitchen/orders/ready', [KitchenController::class, 'markAsReady']);
 
     // Analytics
     Route::prefix('admin/analytics')->group(function () {
@@ -131,4 +168,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/top-menus', [AnalyticsController::class, 'topMenus']);
         Route::get('/daily-sales', [AnalyticsController::class, 'dailySales']);
     });
+
+    // Locations / Zones Admin Management
+    Route::apiResource('admin/zones', \App\Http\Controllers\Admin\ZoneController::class);
+    Route::patch('/admin/zones/{zone}/toggle', [\App\Http\Controllers\Admin\ZoneController::class, 'toggle']);
 });

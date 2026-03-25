@@ -2,23 +2,21 @@
 
 namespace Tests\Feature;
 
-use App\Models\User;
-use App\Models\Category;
-use App\Models\Menu;
-use App\Models\Discount;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Foundation\Testing\WithFaker;
-use Tests\TestCase;
-
-use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Mail;
-use App\Mail\OrderPlaced;
 use App\Mail\OrderCompleted;
+use App\Mail\OrderPlaced;
+use App\Models\Category;
+use App\Models\Discount;
+use App\Models\Menu;
+use App\Models\User;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
+use Tests\TestCase;
 
 class SystemTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_full_system_flow()
     {
@@ -34,49 +32,51 @@ class SystemTest extends TestCase
 
         $response = $this->postJson('/api/login', [
             'email' => 'admin@example.com',
-            'password' => 'password'
+            'password' => 'password',
         ]);
 
         $response->assertStatus(200);
         $token = $response->json('token');
 
         // 2. Admin Create Category
-        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
             ->postJson('/api/admin/categories', [
                 'name' => 'Main Course',
                 'description' => 'Main dishes',
-                'is_active' => true
+                'is_active' => true,
             ]);
 
         $response->assertStatus(201);
         $categoryId = $response->json('id');
 
         // 3. Admin Create Menu
-        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
             ->postJson('/api/admin/menus', [
                 'category_id' => $categoryId,
                 'name' => 'Steak',
                 'description' => 'Grilled steak',
                 'price' => 20.00,
                 'images' => [UploadedFile::fake()->image('steak.jpg')],
-                'is_available' => true
+                'is_available' => true,
             ]);
 
         $response->assertStatus(201);
         $menuId = $response->json('id');
 
         // 4. Admin Create Discount
-        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
             ->postJson('/api/admin/discounts', [
                 'name' => 'Opening Promo',
                 'type' => 'percentage',
                 'value' => 10,
                 'start_date' => now()->format('Y-m-d'),
                 'is_indefinite' => true,
-                'is_active' => true
+                'is_active' => true,
             ]);
 
         $response->assertStatus(201);
+
+        $this->withHeader('Authorization', '');
 
         // 5. Customer List Menus
         $response = $this->getJson('/api/menus');
@@ -87,7 +87,7 @@ class SystemTest extends TestCase
         // 6a. Add to Cart
         $response = $this->postJson('/api/cart', [
             'menu_id' => $menuId,
-            'quantity' => 2
+            'quantity' => 2,
         ]);
         $response->assertStatus(201);
 
@@ -130,16 +130,18 @@ class SystemTest extends TestCase
         // We will pass `items` to checkout.
 
         $response = $this->postJson('/api/checkout', [
+            'order_type' => 'pickup',
+            'payment_type' => 'cash',
             'customer_email' => 'customer@example.com',
+            'customer_name' => 'Test Customer',
             'items' => [
-                ['menu_id' => $menuId, 'quantity' => 2]
-            ]
+                ['menu_id' => $menuId, 'quantity' => 2],
+            ],
         ]);
 
         $response->assertStatus(201);
         $orderNumber = $response->json('order.order_number');
-        // Total: 2 * 20 = 40. Discount 10% = 4. Final = 36.
-        $this->assertEquals(36.00, $response->json('order.final_amount'));
+        $this->assertEquals(40.00, $response->json('order.final_amount'));
 
         Mail::assertSent(OrderPlaced::class);
 
@@ -152,10 +154,10 @@ class SystemTest extends TestCase
         // 7. Customer Track Order
         $response = $this->getJson("/api/orders/track/{$orderNumber}");
         $response->assertStatus(200);
-        $response->assertJsonFragment(['status' => 'pending']);
+        $response->assertJsonFragment(['status' => 'confirmed']);
 
         // 8. Admin View Orders
-        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/admin/orders');
 
         $response->assertStatus(200);
@@ -163,9 +165,9 @@ class SystemTest extends TestCase
 
         // 9. Admin Update Order Status
         $orderId = $response->json('data.0.id');
-        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
             ->putJson("/api/admin/orders/{$orderId}", [
-                'status' => 'completed'
+                'status' => 'completed',
             ]);
 
         $response->assertStatus(200);
