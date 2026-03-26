@@ -49,7 +49,7 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:6',
-            'role' => 'required|in:cashier,supervisor,delivery_agent,kitchen',
+            'role' => 'required|in:attendant,supervisor,delivery_agent,kitchen',
         ]);
 
         $user = User::create([
@@ -62,9 +62,9 @@ class UserController extends Controller
         return response()->json($user, 201);
     }
 
-    public function storeCashier(Request $request)
+    public function storeAttendant(Request $request)
     {
-        $request->merge(['role' => 'cashier']);
+        $request->merge(['role' => 'attendant']);
 
         return $this->storeStaff($request);
     }

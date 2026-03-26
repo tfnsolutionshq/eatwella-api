@@ -51,8 +51,9 @@ Route::get('/states', [LocationController::class, 'getStates']);
 Route::get('/cities', [LocationController::class, 'getCities']);
 Route::get('/zones', [LocationController::class, 'getZones']);
 
-// Dining Tables
+// Dining Tables & Packaging
 Route::get('/tables', [DiningTableController::class, 'index']);
+Route::get('/packagings', [\App\Http\Controllers\TakeawayPackagingController::class, 'index']);
 
 // Cart Routes (Public/Guest + Authenticated) - supports both
 Route::get('/cart', [CartController::class, 'index']);
@@ -116,9 +117,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('admin/taxes', TaxController::class);
     Route::patch('/admin/taxes/{tax}/toggle', [TaxController::class, 'toggleStatus']);
 
-    // Dining Tables Management
+    // Dining Tables & Packaging Management
     Route::apiResource('admin/tables', DiningTableController::class);
     Route::patch('/admin/tables/{table}/toggle', [DiningTableController::class, 'toggle']);
+
+    Route::apiResource('admin/packagings', \App\Http\Controllers\TakeawayPackagingController::class)->parameters([
+        'packagings' => 'takeawayPackaging'
+    ]);
+    Route::patch('/admin/packagings/{takeawayPackaging}/toggle', [\App\Http\Controllers\TakeawayPackagingController::class, 'toggle']);
 
     Route::get('/admin/payments', [PaymentController::class, 'index']);
     Route::get('/admin/careers/applications', [CareersController::class, 'index']);
@@ -129,8 +135,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/admin/careers/openings/{opening}', [CareerOpeningController::class, 'destroy']);
     Route::get('/admin/settings', [SettingsController::class, 'index']);
     Route::put('/admin/settings', [SettingsController::class, 'update']);
-    Route::get('/admin/takeaway-price', [SettingsController::class, 'takeawayPrice']);
-    Route::put('/admin/takeaway-price', [SettingsController::class, 'updateTakeawayPrice']);
 
     // Review Management
     Route::get('/admin/reviews', [ReviewController::class, 'index']);
@@ -140,15 +144,15 @@ Route::middleware('auth:sanctum')->group(function () {
     // Registered Users Management
     Route::get('/admin/users', [UserController::class, 'index']);
     Route::get('/admin/users/{user}', [UserController::class, 'show']);
-    Route::post('/admin/cashiers', [UserController::class, 'storeCashier']);
+    Route::post('/admin/attendants', [UserController::class, 'storeAttendant']);
     Route::post('/admin/staff', [UserController::class, 'storeStaff']);
 
     // Order Management
     Route::get('/admin/orders', [OrderController::class, 'index']);
-    Route::get('/admin/orders/cashier', [OrderController::class, 'cashierCreatedOrders']);
+    Route::get('/admin/orders/attendant', [OrderController::class, 'attendantCreatedOrders']);
     Route::get('/admin/orders/{order}', [OrderController::class, 'show']);
     Route::put('/admin/orders/{order}', [OrderController::class, 'update']);
-    Route::get('/cashier/orders', [OrderController::class, 'cashierOrders']);
+    Route::get('/attendant/orders', [OrderController::class, 'attendantOrders']);
     Route::get('/supervisor/orders', [OrderController::class, 'supervisorIndex']);
     Route::get('/supervisor/orders/{order}', [OrderController::class, 'supervisorShow']);
     Route::patch('/supervisor/orders/{order}/assign-delivery-agent', [OrderController::class, 'assignDeliveryAgent']);

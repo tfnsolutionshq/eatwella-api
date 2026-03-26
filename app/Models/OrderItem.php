@@ -15,8 +15,21 @@ class OrderItem extends Model
         'menu_id',
         'quantity',
         'price',
-        'subtotal'
+        'subtotal',
+        'packaging_id',
+        'packaging_price',
     ];
+
+    protected $casts = [
+        'price' => 'float',
+        'subtotal' => 'float',
+        'packaging_price' => 'float',
+    ];
+
+    public function packaging()
+    {
+        return $this->belongsTo(TakeawayPackaging::class, 'packaging_id');
+    }
 
     public function order(): BelongsTo
     {

@@ -19,6 +19,10 @@ class MenuController extends Controller
             $query->where('category_id', $request->category_id);
         }
 
+        if ($request->filled('search')) {
+            $query->where('name', 'like', '%' . $request->search . '%');
+        }
+
         return $query->paginate($request->get('per_page', 15));
     }
 
@@ -36,6 +40,8 @@ class MenuController extends Controller
             'images.*' => 'image|max:2048',
             'is_available' => 'boolean',
             'requires_takeaway' => 'boolean',
+            'complements' => 'nullable|array',
+            'complements.*' => 'uuid|exists:menus,id',
         ]);
 
         $imagePaths = [];
@@ -48,7 +54,18 @@ class MenuController extends Controller
         $validated['images'] = $imagePaths;
 
         $menu = Menu::create($validated);
-        return response()->json($menu, 201);
+
+        if ($request->has('complements')) {
+            $syncData = [];
+            foreach ($request->complements as $index => $complementId) {
+                if ($complementId !== $menu->id) {
+                    $syncData[$complementId] = ['sort_order' => $index];
+                }
+            }
+            $menu->complements()->sync($syncData);
+        }
+
+        return response()->json($menu->load('complements'), 201);
     }
 
     public function show(Request $request, Menu $menu)
@@ -56,7 +73,7 @@ class MenuController extends Controller
         if ($response = $this->requireRole($request, ['admin'])) {
             return $response;
         }
-        return $menu->load('category');
+        return $menu->load(['category', 'complements']);
     }
 
     public function update(Request $request, Menu $menu)
@@ -73,6 +90,8 @@ class MenuController extends Controller
             'images.*' => 'image|max:2048',
             'is_available' => 'boolean',
             'requires_takeaway' => 'boolean',
+            'complements' => 'nullable|array',
+            'complements.*' => 'uuid|exists:menus,id',
         ]);
 
         if ($request->hasFile('images')) {
@@ -95,7 +114,18 @@ class MenuController extends Controller
         }
 
         $menu->update($validated);
-        return response()->json($menu);
+
+        if ($request->has('complements')) {
+            $syncData = [];
+            foreach ($request->complements as $index => $complementId) {
+                if ($complementId !== $menu->id) {
+                    $syncData[$complementId] = ['sort_order' => $index];
+                }
+            }
+            $menu->complements()->sync($syncData);
+        }
+
+        return response()->json($menu->load('complements'));
     }
 
     public function destroy(Request $request, Menu $menu)

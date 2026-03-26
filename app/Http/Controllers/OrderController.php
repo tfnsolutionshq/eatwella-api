@@ -11,10 +11,10 @@ class OrderController extends Controller
 {
     public function index(Request $request)
     {
-        if ($response = $this->requireRole($request, ['admin', 'cashier'])) {
+        if ($response = $this->requireRole($request, ['admin', 'attendant'])) {
             return $response;
         }
-        $query = Order::with(['orderItems.menu', 'user.addresses', 'cashier', 'deliveryAgent', 'assignedBySupervisor', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name']);
+        $query = Order::with(['orderItems.menu', 'orderItems.packaging', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name']);
 
         if ($request->has('status')) {
             $query->where('status', $request->status);
@@ -25,23 +25,23 @@ class OrderController extends Controller
 
     public function show(Request $request, Order $order)
     {
-        if ($response = $this->requireRole($request, ['admin', 'cashier'])) {
+        if ($response = $this->requireRole($request, ['admin', 'attendant'])) {
             return $response;
         }
 
-        return $order->load(['orderItems.menu', 'invoice', 'user.addresses', 'cashier', 'deliveryAgent', 'assignedBySupervisor', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name']);
+        return $order->load(['orderItems.menu', 'orderItems.packaging', 'invoice', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name']);
     }
 
     public function update(Request $request, Order $order)
     {
-        if ($response = $this->requireRole($request, ['admin', 'cashier', 'supervisor'])) {
+        if ($response = $this->requireRole($request, ['admin', 'attendant', 'supervisor'])) {
             return $response;
         }
 
         $user = $request->user();
 
-        // Cashier can only update their own orders; other cashiers and supervisor can update for them
-        if ($user->role === 'cashier' && $order->cashier_id !== $user->id) {
+        // Attendant can only update their own orders; other attendants and supervisor can update for them
+        if ($user->role === 'attendant' && $order->attendant_id !== $user->id) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -83,7 +83,7 @@ class OrderController extends Controller
             return $response;
         }
 
-        $query = Order::with(['orderItems.menu', 'user.addresses', 'cashier', 'deliveryAgent', 'assignedBySupervisor', 'completedBy', 'invoice']);
+        $query = Order::with(['orderItems.menu', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor', 'completedBy', 'invoice']);
 
         if ($request->has('status')) {
             $query->where('status', $request->status);
@@ -110,7 +110,7 @@ class OrderController extends Controller
             return $response;
         }
 
-        return $order->load(['orderItems.menu', 'invoice', 'user.addresses', 'cashier', 'deliveryAgent', 'assignedBySupervisor', 'completedBy']);
+        return $order->load(['orderItems.menu', 'invoice', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor', 'completedBy']);
     }
 
     public function assignDeliveryAgent(Request $request, Order $order)
@@ -139,7 +139,7 @@ class OrderController extends Controller
             'status' => 'dispatched',
         ]);
 
-        return response()->json($order->load(['orderItems.menu', 'invoice', 'user.addresses', 'cashier', 'deliveryAgent', 'assignedBySupervisor']));
+        return response()->json($order->load(['orderItems.menu', 'invoice', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor']));
     }
 
     public function deliveryAgentShow(Request $request, Order $order)
@@ -152,7 +152,7 @@ class OrderController extends Controller
             return response()->json(['message' => 'Order not found'], 404);
         }
 
-        return $order->load(['orderItems.menu', 'invoice', 'user.addresses', 'cashier', 'deliveryAgent', 'assignedBySupervisor']);
+        return $order->load(['orderItems.menu', 'invoice', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor']);
     }
 
     public function completeDelivery(Request $request, Order $order)
@@ -227,7 +227,7 @@ class OrderController extends Controller
             return $response;
         }
 
-        $query = Order::with(['orderItems.menu', 'invoice', 'user.addresses', 'cashier', 'deliveryAgent', 'assignedBySupervisor'])
+        $query = Order::with(['orderItems.menu', 'invoice', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor'])
             ->where('delivery_agent_id', $request->user()->id);
 
         if ($request->has('status')) {
@@ -237,14 +237,14 @@ class OrderController extends Controller
         return $query->latest()->paginate($request->get('per_page', 15));
     }
 
-    public function cashierOrders(Request $request)
+    public function attendantOrders(Request $request)
     {
-        if ($response = $this->requireRole($request, ['cashier'])) {
+        if ($response = $this->requireRole($request, ['attendant'])) {
             return $response;
         }
 
-        $query = Order::with(['orderItems.menu', 'invoice', 'user.addresses', 'cashier', 'deliveryAgent', 'assignedBySupervisor', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name'])
-            ->where('cashier_id', $request->user()->id);
+        $query = Order::with(['orderItems.menu', 'orderItems.packaging', 'invoice', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name'])
+            ->where('attendant_id', $request->user()->id);
 
         if ($request->has('status')) {
             $query->where('status', $request->status);
@@ -253,14 +253,14 @@ class OrderController extends Controller
         return $query->latest()->paginate($request->get('per_page', 15));
     }
 
-    public function cashierCreatedOrders(Request $request)
+    public function attendantCreatedOrders(Request $request)
     {
         if ($response = $this->requireRole($request, ['admin'])) {
             return $response;
         }
 
-        $query = Order::with(['orderItems.menu', 'invoice', 'user.addresses', 'cashier', 'deliveryAgent', 'assignedBySupervisor', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name'])
-            ->whereNotNull('cashier_id');
+        $query = Order::with(['orderItems.menu', 'orderItems.packaging', 'invoice', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name'])
+            ->whereNotNull('attendant_id');
 
         if ($request->has('status')) {
             $query->where('status', $request->status);

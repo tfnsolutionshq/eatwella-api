@@ -55,7 +55,30 @@ class CustomerController extends Controller
             return response()->json(['message' => 'Menu unavailable'], 404);
         }
 
-        return $menu->load('category');
+        $menu->load(['category', 'complements' => function ($query) {
+            $query->where('is_available', true)
+                  ->where('menu_complements.is_active', true)
+                  ->orderBy('menu_complements.sort_order', 'asc');
+        }]);
+
+        // If no curated complements, try to get algorithmic recommendations
+        if ($menu->complements->isEmpty()) {
+            $recommendations = \App\Models\MenuRecommendation::where('menu_id', $menu->id)
+                ->orderByDesc('score')
+                ->limit(4)
+                ->get()
+                ->pluck('recommended_menu_id');
+
+            if ($recommendations->isNotEmpty()) {
+                $algorithmicComplements = Menu::whereIn('id', $recommendations)
+                    ->where('is_available', true)
+                    ->get();
+                // Set dynamic attribute to indicate they are algorithmic
+                $menu->setRelation('complements', $algorithmicComplements);
+            }
+        }
+
+        return response()->json($menu);
     }
 
     public function checkout(Request $request)
@@ -63,13 +86,13 @@ class CustomerController extends Controller
         $user = auth('sanctum')->user();
         if ($user) {
             $role = strtolower(trim($user->role));
-            if (! in_array($role, ['customer', 'cashier'], true)) {
-                return response()->json(['message' => 'Forbidden: Only customers and cashiers can checkout. (Current role: ' . $user->role . ')'], 403);
+            if (! in_array($role, ['customer', 'attendant'], true)) {
+                return response()->json(['message' => 'Forbidden: Only customers and attendants can checkout. (Current role: ' . $user->role . ')'], 403);
             }
-            $isCashier = $role === 'cashier';
+            $isAttendant = $role === 'attendant';
             $isCustomer = $role === 'customer';
         } else {
-            $isCashier = false;
+            $isAttendant = false;
             $isCustomer = false;
         }
 
@@ -79,10 +102,11 @@ class CustomerController extends Controller
             'items' => 'nullable|array',
             'items.*.menu_id' => 'required_with:items|exists:menus,id',
             'items.*.quantity' => 'required_with:items|integer|min:1',
+            'items.*.packaging_id' => 'nullable|exists:takeaway_packagings,id',
         ];
 
         // Guest users must provide customer details
-        if (! $user || $isCashier) {
+        if (! $user || $isAttendant) {
             $rules['customer_name'] = 'required|string|max:255';
             $rules['customer_email'] = 'required|email';
             $rules['customer_phone'] = 'required_if:order_type,delivery|nullable|string';
@@ -109,7 +133,7 @@ class CustomerController extends Controller
 
         $validated = $request->validate($rules);
 
-        return DB::transaction(function () use ($validated, $request, $user, $isCashier, $isCustomer) {
+        return DB::transaction(function () use ($validated, $request, $user, $isAttendant, $isCustomer) {
             // Get items from cart or direct
             $itemsToProcess = [];
             $cart = null;
@@ -126,6 +150,7 @@ class CustomerController extends Controller
                     $itemsToProcess[] = [
                         'menu_id' => $cartItem->menu_id,
                         'quantity' => $cartItem->quantity,
+                        'packaging_id' => $cartItem->packaging_id,
                     ];
                 }
             } elseif (! empty($validated['items'])) {
@@ -148,11 +173,6 @@ class CustomerController extends Controller
             $taxDetails = [];
 
             $needsTakeaway = in_array($validated['order_type'], ['delivery', 'pickup']);
-            $takeawayPrice = 0;
-            if ($needsTakeaway) {
-                $takeawayPrice = (float) (\App\Models\Setting::where('key', 'takeaway_price')->value('value') ?? 0);
-                if ($takeawayPrice < 0) $takeawayPrice = 0;
-            }
 
             foreach ($itemsToProcess as $item) {
                 $menu = Menu::findOrFail($item['menu_id']);
@@ -163,8 +183,22 @@ class CustomerController extends Controller
                 $subtotal = $menu->price * $item['quantity'];
                 $totalAmount += $subtotal;
 
+                $itemPackagingId = null;
+                $itemPackagingPrice = 0;
+
                 if ($needsTakeaway && $menu->requires_takeaway) {
-                    $takeawayAmount += $takeawayPrice * $item['quantity'];
+                    if (empty($item['packaging_id'])) {
+                        throw new \Exception("Please select a packaging size for {$menu->name}.");
+                    }
+                    
+                    $packaging = \App\Models\TakeawayPackaging::where('id', $item['packaging_id'])->where('is_active', true)->first();
+                    if ($packaging) {
+                        $itemPackagingId = $packaging->id;
+                        $itemPackagingPrice = $packaging->price;
+                        $takeawayAmount += $itemPackagingPrice * $item['quantity'];
+                    } else {
+                        throw new \Exception("Selected packaging for {$menu->name} is unavailable.");
+                    }
                 }
 
                 $orderItemsData[] = [
@@ -172,6 +206,8 @@ class CustomerController extends Controller
                     'quantity' => $item['quantity'],
                     'price'    => $menu->price,
                     'subtotal' => $subtotal,
+                    'packaging_id' => $itemPackagingId,
+                    'packaging_price' => $itemPackagingPrice,
                 ];
             }
             $takeawayAmount = round($takeawayAmount, 2);
@@ -265,7 +301,7 @@ class CustomerController extends Controller
             $customerEmail = $isCustomer ? $user->email : $validated['customer_email'];
             $customerPhone = $isCustomer ? $user->phone : ($validated['customer_phone'] ?? null);
             $orderUserId = $isCustomer ? $user->id : null;
-            $cashierId = $isCashier ? $user->id : null;
+            $attendantId = $isAttendant ? $user->id : null;
 
             // Handle payment based on payment type
             if ($validated['payment_type'] === 'gateway') {
@@ -325,7 +361,7 @@ class CustomerController extends Controller
             $order = Order::create([
                 'order_number' => $orderNumber,
                 'user_id' => $orderUserId,
-                'cashier_id' => $cashierId,
+                'attendant_id' => $attendantId,
                 'order_type' => $validated['order_type'],
                 'payment_type' => $validated['payment_type'],
                 'customer_email' => $customerEmail,

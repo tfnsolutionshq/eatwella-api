@@ -11,11 +11,11 @@ use Illuminate\Support\Facades\Mail;
 class PaymentController extends Controller
 {
     /**
-     * Get all payments with totals (Admin and Cashier)
+     * Get all payments with totals (Admin and Attendant)
      */
     public function index(Request $request)
     {
-        if (!in_array($request->user()->role, ['admin', 'cashier'], true)) {
+        if (!in_array($request->user()->role, ['admin', 'attendant'], true)) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -28,7 +28,7 @@ class PaymentController extends Controller
         $totalTransactions = Invoice::count();
 
         // Get paginated payments
-        $payments = Invoice::with(['order.user', 'order.cashier'])
+        $payments = Invoice::with(['order.user', 'order.attendant'])
             ->latest()
             ->paginate($perPage);
 

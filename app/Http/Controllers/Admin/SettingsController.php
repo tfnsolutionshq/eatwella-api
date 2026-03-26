@@ -35,41 +35,4 @@ class SettingsController extends Controller
 
         return response()->json(['message' => 'Settings updated successfully']);
     }
-
-    // Single Endpoint for Takeaway Price
-    public function takeawayPrice(Request $request)
-    {
-        if ($response = $this->requireRole($request, ['admin'])) {
-            return $response;
-        }
-
-        $value = Setting::where('key', 'takeaway_price')->value('value');
-        $price = (float) ($value ?? 0);
-        if ($price < 0) {
-            $price = 0;
-        }
-
-        return response()->json(['takeaway_price' => round($price, 2)]);
-    }
-
-    public function updateTakeawayPrice(Request $request)
-    {
-        if ($response = $this->requireRole($request, ['admin'])) {
-            return $response;
-        }
-
-        $validated = $request->validate([
-            'takeaway_price' => 'required|numeric|min:0',
-        ]);
-
-        Setting::updateOrCreate(
-            ['key' => 'takeaway_price'],
-            ['value' => $validated['takeaway_price']]
-        );
-
-        return response()->json([
-            'message' => 'Takeaway price updated successfully',
-            'takeaway_price' => round($validated['takeaway_price'], 2),
-        ]);
-    }
 }

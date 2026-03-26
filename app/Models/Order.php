@@ -14,7 +14,7 @@ class Order extends Model
     protected $fillable = [
         'order_number',
         'user_id',
-        'cashier_id',
+        'attendant_id',
         'delivery_agent_id',
         'assigned_by_supervisor_id',
         'order_type',
@@ -79,9 +79,9 @@ class Order extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function cashier()
+    public function attendant()
     {
-        return $this->belongsTo(User::class, 'cashier_id');
+        return $this->belongsTo(User::class, 'attendant_id');
     }
 
     public function deliveryAgent()

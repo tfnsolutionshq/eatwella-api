@@ -16,7 +16,7 @@ class AuthController extends Controller
 
         if (Auth::attempt($credentials)) {
             $user = Auth::user();
-            if (! in_array($user->role, ['admin', 'cashier', 'supervisor', 'delivery_agent', 'kitchen'], true)) {
+            if (! in_array($user->role, ['admin', 'attendant', 'supervisor', 'delivery_agent', 'kitchen'], true)) {
                 Auth::logout();
 
                 return response()->json(['message' => 'Forbidden'], 403);

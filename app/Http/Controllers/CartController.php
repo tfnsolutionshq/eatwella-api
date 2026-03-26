@@ -27,13 +27,13 @@ class CartController extends Controller
     public function index(Request $request)
     {
         if ($request->user()) {
-            $cart = Cart::with('items.menu')->where('user_id', $request->user()->id)->first();
+            $cart = Cart::with(['items.menu', 'items.packaging'])->where('user_id', $request->user()->id)->first();
         } else {
             $cartId = $this->getCartId($request);
             if (!$cartId) {
                 return response()->json(['items' => []]);
             }
-            $cart = Cart::with('items.menu')->where('session_id', $cartId)->first();
+            $cart = Cart::with(['items.menu', 'items.packaging'])->where('session_id', $cartId)->first();
         }
 
         if (!$cart) {
@@ -51,6 +51,7 @@ class CartController extends Controller
         $validated = $request->validate([
             'menu_id' => 'required|exists:menus,id',
             'quantity' => 'required|integer|min:1',
+            'packaging_id' => 'nullable|exists:takeaway_packagings,id',
         ]);
 
         $menu = Menu::findOrFail($validated['menu_id']);
@@ -60,7 +61,7 @@ class CartController extends Controller
 
         // Check if user is authenticated via Bearer token
         $user = auth('sanctum')->user();
-        
+
         if ($user) {
             $cart = Cart::firstOrCreate(['user_id' => $user->id]);
         } else {
@@ -71,7 +72,10 @@ class CartController extends Controller
             $cart = Cart::firstOrCreate(['session_id' => $cartId]);
         }
 
-        $cartItem = $cart->items()->where('menu_id', $validated['menu_id'])->first();
+        $cartItem = $cart->items()
+            ->where('menu_id', $validated['menu_id'])
+            ->where('packaging_id', $validated['packaging_id'] ?? null)
+            ->first();
 
         if ($cartItem) {
             $cartItem->quantity += $validated['quantity'];
@@ -80,19 +84,21 @@ class CartController extends Controller
             $cartItem = $cart->items()->create([
                 'menu_id' => $validated['menu_id'],
                 'quantity' => $validated['quantity'],
+                'packaging_id' => $validated['packaging_id'] ?? null,
             ]);
         }
 
-        return response()->json($cart->load('items.menu'), 201);
+        return response()->json($cart->load('items.menu', 'items.packaging'), 201);
     }
 
     /**
-     * Update item quantity.
+     * Update item quantity or packaging.
      */
     public function update(Request $request, $itemId)
     {
         $validated = $request->validate([
-            'quantity' => 'required|integer|min:1',
+            'quantity' => 'sometimes|integer|min:1',
+            'packaging_id' => 'sometimes|nullable|exists:takeaway_packagings,id',
         ]);
 
         if ($request->user()) {
@@ -104,20 +110,30 @@ class CartController extends Controller
             }
             $cart = Cart::where('session_id', $cartId)->first();
         }
-        
+
         if (!$cart) {
             return response()->json(['message' => 'Cart not found'], 404);
         }
-        
+
         $item = $cart->items()->where('id', $itemId)->first();
-        
+
         if (!$item) {
             return response()->json(['message' => 'Item not found in cart'], 404);
         }
 
-        $item->update(['quantity' => $validated['quantity']]);
+        $updateData = [];
+        if (isset($validated['quantity'])) {
+            $updateData['quantity'] = $validated['quantity'];
+        }
+        if (array_key_exists('packaging_id', $validated)) {
+            $updateData['packaging_id'] = $validated['packaging_id'];
+        }
 
-        return response()->json($cart->load('items.menu'));
+        if (!empty($updateData)) {
+            $item->update($updateData);
+        }
+
+        return response()->json($cart->load('items.menu', 'items.packaging'));
     }
 
     /**
@@ -134,20 +150,20 @@ class CartController extends Controller
             }
             $cart = Cart::where('session_id', $cartId)->first();
         }
-        
+
         if (!$cart) {
             return response()->json(['message' => 'Cart not found'], 404);
         }
-        
+
         $item = $cart->items()->where('id', $itemId)->first();
-        
+
         if (!$item) {
             return response()->json(['message' => 'Item not found in cart'], 404);
         }
 
         $item->delete();
 
-        return response()->json($cart->load('items.menu'));
+        return response()->json($cart->load('items.menu', 'items.packaging'));
     }
 
 
@@ -167,7 +183,7 @@ class CartController extends Controller
             }
             $cart = Cart::where('session_id', $cartId)->first();
         }
-        
+
         if (!$cart) {
             return response()->json(['message' => 'Cart is empty'], 404);
         }
@@ -202,7 +218,7 @@ class CartController extends Controller
             }
             $cart = Cart::where('session_id', $cartId)->first();
         }
-        
+
         if (!$cart) {
             return response()->json(['message' => 'Cart not found'], 404);
         }

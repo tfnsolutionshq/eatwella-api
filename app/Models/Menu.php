@@ -48,4 +48,12 @@ class Menu extends Model
     {
         return $this->hasMany(OrderItem::class);
     }
+
+    public function complements()
+    {
+        return $this->belongsToMany(Menu::class, 'menu_complements', 'menu_id', 'complementary_menu_id')
+                    ->withPivot('is_active', 'sort_order')
+                    ->withTimestamps()
+                    ->orderByPivot('sort_order', 'asc');
+    }
 }
