@@ -34,6 +34,7 @@ class Order extends Model
         'discount_code',
         'final_amount',
         'status',
+        'delivery_pin',
         'points_earned',
         'assigned_at',
         'expires_at',
@@ -52,6 +53,10 @@ class Order extends Model
         'tax_details' => 'array',
         'tax_amount' => 'decimal:2',
         'delivery_fee' => 'decimal:2',
+    ];
+
+    protected $hidden = [
+        'delivery_pin',
     ];
 
     protected $appends = ['completion_time_minutes'];

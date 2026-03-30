@@ -190,7 +190,7 @@ class CustomerController extends Controller
                     if (empty($item['packaging_id'])) {
                         throw new \Exception("Please select a packaging size for {$menu->name}.");
                     }
-                    
+
                     $packaging = \App\Models\TakeawayPackaging::where('id', $item['packaging_id'])->where('is_active', true)->first();
                     if ($packaging) {
                         $itemPackagingId = $packaging->id;
@@ -309,7 +309,7 @@ class CustomerController extends Controller
                 $paymentResult = $this->paymentGateway->charge(
                     $finalAmount,
                     $customerEmail,
-                    ['callback_url' => 'https://eatwella.ng/api/payment/callback']
+                    ['callback_url' => 'https://eatwella.tfnsolutions.us/api/payment/callback']
                 );
 
                 if ($paymentResult['status'] === 'failed') {
@@ -358,6 +358,11 @@ class CustomerController extends Controller
                 $expiresAt = now()->addMinutes(45);
             }
 
+            $deliveryPin = null;
+            if ($validated['order_type'] === 'delivery') {
+                $deliveryPin = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
+            }
+
             $order = Order::create([
                 'order_number' => $orderNumber,
                 'user_id' => $orderUserId,
@@ -381,6 +386,7 @@ class CustomerController extends Controller
                 'discount_code' => $discountCode,
                 'final_amount' => $finalAmount,
                 'status' => $orderStatus,
+                'delivery_pin' => $deliveryPin,
                 'expires_at' => $expiresAt,
             ]);
 
@@ -404,6 +410,7 @@ class CustomerController extends Controller
             }
 
             // Prepare response
+            $order->makeVisible('delivery_pin');
             $response = [
                 'message' => in_array($validated['payment_type'], ['cash', 'loyalty_points'])
                     ? 'Order placed successfully'
@@ -434,6 +441,8 @@ class CustomerController extends Controller
     public function trackOrder($orderNumber)
     {
         $order = Order::where('order_number', $orderNumber)->with(['orderItems.menu', 'invoice', 'deliveryAgent', 'assignedBySupervisor', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name'])->firstOrFail();
+
+        $order->makeVisible('delivery_pin');
 
         return $order;
     }

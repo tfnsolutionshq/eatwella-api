@@ -132,6 +132,10 @@ class CustomerAuthController extends Controller
             ->latest()
             ->paginate($perPage);
 
+        $orders->getCollection()->transform(function ($order) {
+            return $order->makeVisible('delivery_pin');
+        });
+
         return response()->json($orders);
     }
 

@@ -170,15 +170,16 @@ class OrderController extends Controller
         }
 
         $request->validate([
-            'proof_image' => 'required|image|max:5120',
-            'note'        => 'nullable|string|max:500',
+            'delivery_pin' => 'required|string|size:6',
+            'note'         => 'nullable|string|max:500',
         ]);
 
-        $path = $request->file('proof_image')->store('delivery-proofs', 'public');
+        if ($order->delivery_pin !== $request->delivery_pin) {
+            return response()->json(['message' => 'Invalid delivery PIN'], 400);
+        }
 
         $order->update([
             'status'                => 'completed',
-            'delivery_proof_image'  => $path,
             'delivery_note'         => $request->note,
             'completed_by_id'       => $request->user()->id,
             'completed_at'          => now(),
@@ -203,15 +204,16 @@ class OrderController extends Controller
         }
 
         $request->validate([
-            'proof_image' => 'required|image|max:5120',
-            'note'        => 'nullable|string|max:500',
+            'delivery_pin' => 'required|string|size:6',
+            'note'         => 'nullable|string|max:500',
         ]);
 
-        $path = $request->file('proof_image')->store('delivery-proofs', 'public');
+        if ($order->delivery_pin !== $request->delivery_pin) {
+            return response()->json(['message' => 'Invalid delivery PIN'], 400);
+        }
 
         $order->update([
             'status'                => 'completed',
-            'delivery_proof_image'  => $path,
             'delivery_note'         => $request->note,
             'completed_by_id'       => $request->user()->id,
             'completed_at'          => now(),

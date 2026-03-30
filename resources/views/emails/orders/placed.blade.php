@@ -328,6 +328,13 @@
                     <span>Delivery Address:</span>
                     <span>{{ $order->delivery_address }}, {{ $order->delivery_city }}, {{ $order->delivery_zip }}</span>
                 </div>
+                <div class="info-row">
+                    <span><strong>Delivery PIN:</strong></span>
+                    <span style="font-size: 1.2em; font-weight: bold; color: #166534;">{{ $order->delivery_pin }}</span>
+                </div>
+                <div class="info-row" style="font-size: 0.9em; color: #666; border-top: none; padding-top: 0;">
+                    <span colspan="2"><em>Please provide this PIN to your delivery agent to complete the delivery.</em></span>
+                </div>
                 @endif
                 <div class="info-row">
                     <span>Status:</span>

@@ -131,6 +131,9 @@ class PaymentController extends Controller
                 $order->update(['status' => 'confirmed']);
                 $order->invoice()->update(['payment_status' => 'paid']);
 
+                // Send confirmation email
+                Mail::to($order->customer_email)->send(new \App\Mail\OrderPlaced($order));
+
                 // Refresh order data
                 $order->refresh();
                 $order->load(['orderItems.menu', 'invoice']);
@@ -154,13 +157,13 @@ class PaymentController extends Controller
         $reference = $request->query('reference') ?: $request->query('trxref');
 
         if (!$reference) {
-            return redirect('https://eatwella.ng');
+            return redirect('https://eatwella.tfnsolutions.us');
         }
 
         $order = Order::where('order_number', $reference)->first();
 
         if (!$order) {
-            return redirect('https://eatwella.ng');
+            return redirect('https://eatwella.tfnsolutions.us');
         }
 
         // If still pending, verify with Paystack
@@ -176,7 +179,7 @@ class PaymentController extends Controller
             }
         }
 
-        return redirect('https://eatwella.ng/receipt/' . $order->id);
+        return redirect('https://eatwella.tfnsolutions.us/receipt/' . $order->id);
     }
 
     /**
@@ -213,15 +216,19 @@ class PaymentController extends Controller
             $order = Order::where('order_number', $reference)->first();
 
             if ($order && $status === 'success') {
-                $order->update(['status' => 'confirmed']);
+                if ($order->status === 'pending') {
+                    $order->update(['status' => 'confirmed']);
 
-                // Update invoice to paid
-                $order->invoice()->update(['payment_status' => 'paid']);
+                    // Update invoice to paid
+                    $order->invoice()->update(['payment_status' => 'paid']);
 
-                // Send confirmation email
-                Mail::to($order->customer_email)->send(new \App\Mail\OrderPlaced($order));
+                    // Send confirmation email
+                    Mail::to($order->customer_email)->send(new \App\Mail\OrderPlaced($order));
 
-                Log::info("Order {$reference} payment confirmed via webhook");
+                    Log::info("Order {$reference} payment confirmed via webhook");
+                } else {
+                    Log::info("Order {$reference} was already confirmed, ignoring webhook");
+                }
             } else {
                 Log::warning("Order not found or status mismatch", ['reference' => $reference, 'status' => $status]);
             }
