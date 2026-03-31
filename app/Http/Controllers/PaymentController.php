@@ -157,13 +157,13 @@ class PaymentController extends Controller
         $reference = $request->query('reference') ?: $request->query('trxref');
 
         if (!$reference) {
-            return redirect('https://eatwella.tfnsolutions.us');
+            return redirect('https://eatwella.ng');
         }
 
         $order = Order::where('order_number', $reference)->first();
 
         if (!$order) {
-            return redirect('https://eatwella.tfnsolutions.us');
+            return redirect('https://eatwella.ng');
         }
 
         // If still pending, verify with Paystack
@@ -179,7 +179,7 @@ class PaymentController extends Controller
             }
         }
 
-        return redirect('https://eatwella.tfnsolutions.us/receipt/' . $order->id);
+        return redirect('https://eatwella.ng/receipt/' . $order->id);
     }
 
     /**

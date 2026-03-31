@@ -42,7 +42,7 @@ Route::get('/menus', [CustomerController::class, 'listMenus']);
 Route::get('/menus/{menu}', [CustomerController::class, 'showMenu']);
 Route::get('/takeaway-price', [CustomerController::class, 'takeawayPrice']);
 Route::post('/checkout', [CustomerController::class, 'checkout']);
-Route::get('/orders/track/{order_number}', [CustomerController::class, 'trackOrder']);
+Route::get('/orders/track/{identifier}', [CustomerController::class, 'trackOrder']);
 Route::get('/careers/openings', [CareersController::class, 'listOpenings']);
 Route::post('/careers/apply', [CareersController::class, 'store']);
 

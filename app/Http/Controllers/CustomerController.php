@@ -438,9 +438,12 @@ class CustomerController extends Controller
         });
     }
 
-    public function trackOrder($orderNumber)
+    public function trackOrder($identifier)
     {
-        $order = Order::where('order_number', $orderNumber)->with(['orderItems.menu', 'invoice', 'deliveryAgent', 'assignedBySupervisor', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name'])->firstOrFail();
+        $order = Order::where('order_number', $identifier)
+            ->orWhere('id', $identifier)
+            ->with(['orderItems.menu', 'invoice', 'deliveryAgent', 'assignedBySupervisor', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name'])
+            ->firstOrFail();
 
         $order->makeVisible('delivery_pin');
 
