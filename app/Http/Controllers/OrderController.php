@@ -25,7 +25,7 @@ class OrderController extends Controller
 
     public function show(Request $request, Order $order)
     {
-        if ($response = $this->requireRole($request, ['admin', 'attendant'])) {
+        if ($response = $this->requireRole($request, ['admin', 'attendant', 'kitchen'])) {
             return $response;
         }
 

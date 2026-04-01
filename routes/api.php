@@ -153,6 +153,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/orders/{order}', [OrderController::class, 'show']);
     Route::put('/admin/orders/{order}', [OrderController::class, 'update']);
     Route::get('/attendant/orders', [OrderController::class, 'attendantOrders']);
+    Route::get('/attendant/orders/{order}', [OrderController::class, 'show']);
 
     // Supervisor endpoints
     Route::get('/supervisor/delivery-agents', [OrderController::class, 'getDeliveryAgents']);
@@ -167,6 +168,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Kitchen Routes
     Route::get('/kitchen/orders/confirmed', [KitchenController::class, 'getConfirmedOrders']);
+    Route::get('/kitchen/orders/{order}', [OrderController::class, 'show']);
     Route::post('/kitchen/orders/ready', [KitchenController::class, 'markAsReady']);
 
     // Analytics
