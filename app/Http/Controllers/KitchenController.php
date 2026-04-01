@@ -18,11 +18,35 @@ class KitchenController extends Controller
         }
 
         $orders = Order::with(['orderItems.menu', 'orderItems.packaging'])
-            ->where('status', 'confirmed')
+            ->whereIn('status', ['confirmed', 'processing'])
             ->orderBy('created_at', 'asc')
             ->get();
 
         return response()->json($orders);
+    }
+
+    /**
+     * Mark one or more orders as preparing (processing).
+     */
+    public function markAsPreparing(Request $request)
+    {
+        if ($response = $this->requireRole($request, ['kitchen'])) {
+            return $response;
+        }
+
+        $validated = $request->validate([
+            'order_ids' => 'required|array',
+            'order_ids.*' => 'required|uuid|exists:orders,id',
+        ]);
+
+        $updatedCount = Order::whereIn('id', $validated['order_ids'])
+            ->where('status', 'confirmed')
+            ->update(['status' => 'processing']);
+
+        return response()->json([
+            'message' => "Successfully marked {$updatedCount} order(s) as preparing.",
+            'updated_count' => $updatedCount
+        ]);
     }
 
     /**
@@ -40,7 +64,7 @@ class KitchenController extends Controller
         ]);
 
         $updatedCount = Order::whereIn('id', $validated['order_ids'])
-            ->where('status', 'confirmed')
+            ->whereIn('status', ['confirmed', 'processing'])
             ->update(['status' => 'ready']);
 
         return response()->json([

@@ -169,6 +169,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Kitchen Routes
     Route::get('/kitchen/orders/confirmed', [KitchenController::class, 'getConfirmedOrders']);
     Route::get('/kitchen/orders/{order}', [OrderController::class, 'show']);
+    Route::post('/kitchen/orders/preparing', [KitchenController::class, 'markAsPreparing']);
     Route::post('/kitchen/orders/ready', [KitchenController::class, 'markAsReady']);
 
     // Analytics
