@@ -153,6 +153,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/orders/{order}', [OrderController::class, 'show']);
     Route::put('/admin/orders/{order}', [OrderController::class, 'update']);
     Route::get('/attendant/orders', [OrderController::class, 'attendantOrders']);
+
+    // Supervisor endpoints
+    Route::get('/supervisor/delivery-agents', [OrderController::class, 'getDeliveryAgents']);
     Route::get('/supervisor/orders', [OrderController::class, 'supervisorIndex']);
     Route::get('/supervisor/orders/{order}', [OrderController::class, 'supervisorShow']);
     Route::patch('/supervisor/orders/{order}/assign-delivery-agent', [OrderController::class, 'assignDeliveryAgent']);

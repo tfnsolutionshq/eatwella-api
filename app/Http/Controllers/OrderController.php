@@ -83,7 +83,7 @@ class OrderController extends Controller
             return $response;
         }
 
-        $query = Order::with(['orderItems.menu', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor', 'completedBy', 'invoice']);
+        $query = Order::with(['orderItems.menu', 'orderItems.packaging', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor', 'completedBy', 'invoice']);
 
         if ($request->has('status')) {
             $query->where('status', $request->status);
@@ -104,13 +104,27 @@ class OrderController extends Controller
         return $query->latest()->paginate($request->get('per_page', 15));
     }
 
+    public function getDeliveryAgents(Request $request)
+    {
+        if ($response = $this->requireRole($request, ['supervisor', 'admin'])) {
+            return $response;
+        }
+
+        $agents = \App\Models\User::where('role', 'delivery_agent')
+            ->select('id', 'name', 'email', 'phone')
+            ->orderBy('name')
+            ->get();
+
+        return response()->json($agents);
+    }
+
     public function supervisorShow(Request $request, Order $order)
     {
         if ($response = $this->requireRole($request, ['supervisor'])) {
             return $response;
         }
 
-        return $order->load(['orderItems.menu', 'invoice', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor', 'completedBy']);
+        return $order->load(['orderItems.menu', 'orderItems.packaging', 'invoice', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor', 'completedBy']);
     }
 
     public function assignDeliveryAgent(Request $request, Order $order)
@@ -139,7 +153,7 @@ class OrderController extends Controller
             'status' => 'dispatched',
         ]);
 
-        return response()->json($order->load(['orderItems.menu', 'invoice', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor']));
+        return response()->json($order->load(['orderItems.menu', 'orderItems.packaging', 'invoice', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor']));
     }
 
     public function deliveryAgentShow(Request $request, Order $order)
@@ -152,7 +166,7 @@ class OrderController extends Controller
             return response()->json(['message' => 'Order not found'], 404);
         }
 
-        return $order->load(['orderItems.menu', 'invoice', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor']);
+        return $order->load(['orderItems.menu', 'orderItems.packaging', 'invoice', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor']);
     }
 
     public function completeDelivery(Request $request, Order $order)
@@ -186,7 +200,7 @@ class OrderController extends Controller
             'expires_at'            => null,
         ]);
 
-        return response()->json($order->load(['orderItems.menu', 'invoice', 'deliveryAgent', 'assignedBySupervisor', 'completedBy']));
+        return response()->json($order->load(['orderItems.menu', 'orderItems.packaging', 'invoice', 'deliveryAgent', 'assignedBySupervisor', 'completedBy']));
     }
 
     public function supervisorCompleteDelivery(Request $request, Order $order)
@@ -220,7 +234,7 @@ class OrderController extends Controller
             'expires_at'            => null,
         ]);
 
-        return response()->json($order->load(['orderItems.menu', 'invoice', 'deliveryAgent', 'assignedBySupervisor', 'completedBy']));
+        return response()->json($order->load(['orderItems.menu', 'orderItems.packaging', 'invoice', 'deliveryAgent', 'assignedBySupervisor', 'completedBy']));
     }
 
     public function deliveryAgentOrders(Request $request)
@@ -229,7 +243,7 @@ class OrderController extends Controller
             return $response;
         }
 
-        $query = Order::with(['orderItems.menu', 'invoice', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor'])
+        $query = Order::with(['orderItems.menu', 'orderItems.packaging', 'invoice', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor'])
             ->where('delivery_agent_id', $request->user()->id);
 
         if ($request->has('status')) {

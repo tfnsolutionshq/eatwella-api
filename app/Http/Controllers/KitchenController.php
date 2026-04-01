@@ -17,7 +17,7 @@ class KitchenController extends Controller
             return $response;
         }
 
-        $orders = Order::with(['orderItems.menu'])
+        $orders = Order::with(['orderItems.menu', 'orderItems.packaging'])
             ->where('status', 'confirmed')
             ->orderBy('created_at', 'asc')
             ->get();
