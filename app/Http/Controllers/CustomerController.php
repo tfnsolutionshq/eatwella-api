@@ -347,8 +347,17 @@ class CustomerController extends Controller
             } else {
                 // Cash payment
                 $orderNumber = 'ORD-'.strtoupper(Str::random(10));
-                $orderStatus = 'confirmed';
-                $paymentStatus = 'pending';
+                
+                if ($isAttendant) {
+                    // Attendant placed order with cash: assumed paid/confirmed immediately
+                    $orderStatus = 'confirmed';
+                    $paymentStatus = 'paid';
+                } else {
+                    // Customer placed order with cash: pending until attendant confirms payment
+                    $orderStatus = 'pending';
+                    $paymentStatus = 'pending';
+                }
+                
                 $paymentMethod = 'cash';
             }
 

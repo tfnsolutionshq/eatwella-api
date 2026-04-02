@@ -128,7 +128,7 @@ class CustomerAuthController extends Controller
         $perPage = $request->get('per_page', 10);
 
         $orders = Order::where('user_id', $request->user()->id)
-            ->with(['orderItems.menu', 'invoice', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name'])
+            ->with(['orderItems.menu', 'orderItems.packaging', 'invoice', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name'])
             ->latest()
             ->paginate($perPage);
 

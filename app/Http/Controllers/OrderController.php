@@ -40,10 +40,10 @@ class OrderController extends Controller
 
         $user = $request->user();
 
-        // Attendant can only update their own orders; other attendants and supervisor can update for them
-        if ($user->role === 'attendant' && $order->attendant_id !== $user->id) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
+        // Attendant can only update their own orders or unassigned orders; other attendants and supervisor can update for them
+        // Actually, since we want attendants to be able to confirm cash orders placed by customers online, 
+        // we shouldn't restrict them to only orders they created.
+        // We'll remove this restriction so they can process any order.
 
         $validated = $request->validate([
             'status' => 'required|in:pending,processing,confirmed,ready,dispatched,completed,cancelled',
@@ -52,6 +52,14 @@ class OrderController extends Controller
         $originalStatus = $order->status;
 
         $updateData = ['status' => $validated['status']];
+
+        // If status is changed from pending to confirmed, update invoice to paid
+        if ($validated['status'] === 'confirmed' && $originalStatus === 'pending') {
+            if ($order->invoice) {
+                $order->invoice->update(['payment_status' => 'paid']);
+            }
+            $updateData['expires_at'] = null; // Remove expiration if it was pending cash
+        }
 
         if ($validated['status'] === 'completed') {
             $updateData['expires_at']      = null;
@@ -259,8 +267,7 @@ class OrderController extends Controller
             return $response;
         }
 
-        $query = Order::with(['orderItems.menu', 'orderItems.packaging', 'invoice', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name'])
-            ->where('attendant_id', $request->user()->id);
+        $query = Order::with(['orderItems.menu', 'orderItems.packaging', 'invoice', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name']);
 
         if ($request->has('status')) {
             $query->where('status', $request->status);
