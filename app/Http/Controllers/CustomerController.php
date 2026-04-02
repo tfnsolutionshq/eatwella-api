@@ -112,9 +112,9 @@ class CustomerController extends Controller
             $rules['customer_phone'] = 'required_if:order_type,delivery|nullable|string';
         }
 
-        // Table number for dine-in
+        // Table number for dine-in is optional
         if ($request->order_type === 'dine') {
-            $rules['table_number'] = ['required', 'string', \Illuminate\Validation\Rule::exists('dining_tables', 'name')->where('is_active', true)];
+            $rules['table_number'] = ['nullable', 'string', \Illuminate\Validation\Rule::exists('dining_tables', 'name')->where('is_active', true)];
         }
 
         // For delivery orders
