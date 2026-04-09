@@ -451,7 +451,7 @@ class CustomerController extends Controller
     {
         $order = Order::where('order_number', $identifier)
             ->orWhere('id', $identifier)
-            ->with(['orderItems.menu', 'invoice', 'deliveryAgent', 'assignedBySupervisor', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name'])
+            ->with(['orderItems.menu', 'orderItems.packaging', 'invoice', 'deliveryAgent', 'assignedBySupervisor', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name'])
             ->firstOrFail();
 
         $order->makeVisible('delivery_pin');

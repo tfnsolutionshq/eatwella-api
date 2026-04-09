@@ -161,6 +161,10 @@ class OrderController extends Controller
             'status' => 'dispatched',
         ]);
 
+        if ($agent->email) {
+            Mail::to($agent->email)->send(new \App\Mail\OrderAssignedToAgent($order, $agent));
+        }
+
         return response()->json($order->load(['orderItems.menu', 'orderItems.packaging', 'invoice', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor']));
     }
 
