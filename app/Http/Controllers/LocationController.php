@@ -31,9 +31,8 @@ class LocationController extends Controller
             $query->where('city_id', $request->city_id);
         }
 
-        // Default to active only for public
-        if ($request->query('active', 1)) {
-            $query->where('is_active', true);
+        if ($request->filled('active')) {
+            $query->where('is_active', (bool) $request->active);
         }
 
         return $query->orderBy('sort_order')->get();

@@ -83,6 +83,8 @@ Route::get('/payment/status', [PaymentController::class, 'orderStatus']);
 Route::get('/payment/callback', [PaymentController::class, 'paymentCallback']);
 Route::post('/payment/webhook', [PaymentController::class, 'webhook']);
 
+Route::get('/availability-hours', [SettingsController::class, 'getAvailabilityHours']);
+
 // Admin Protected Routes
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -135,6 +137,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/admin/careers/openings/{opening}', [CareerOpeningController::class, 'destroy']);
     Route::get('/admin/settings', [SettingsController::class, 'index']);
     Route::put('/admin/settings', [SettingsController::class, 'update']);
+    Route::put('/admin/availability-hours', [SettingsController::class, 'setAvailabilityHours']);
 
     // Review Management
     Route::get('/admin/reviews', [ReviewController::class, 'index']);

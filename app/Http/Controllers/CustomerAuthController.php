@@ -68,7 +68,7 @@ class CustomerAuthController extends Controller
 
         return response()->json([
             'message' => 'Login successful',
-            'user' => $user,
+            'user' => $user->load('addresses.zone'),
             'token' => $token
         ]);
     }

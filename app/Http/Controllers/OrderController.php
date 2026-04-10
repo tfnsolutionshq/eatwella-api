@@ -71,18 +71,24 @@ class OrderController extends Controller
 
         if ($validated['status'] === 'completed' && $originalStatus !== 'completed') {
             Mail::to($order->customer_email)->send(new OrderCompleted($order));
-
-            if ($order->user_id && $order->points_earned == 0) {
-                $pointsPerOrder = (int) (\App\Models\Setting::where('key', 'loyalty_points_per_order')->value('value') ?? 10);
-                $customer = \App\Models\User::find($order->user_id);
-                if ($customer) {
-                    $customer->increment('loyalty_points', $pointsPerOrder);
-                    $order->update(['points_earned' => $pointsPerOrder]);
-                }
-            }
+            $this->awardLoyaltyPoints($order);
         }
 
         return response()->json($order->load('completedBy'));
+    }
+
+    private function awardLoyaltyPoints(Order $order): void
+    {
+        if (! $order->user_id || $order->points_earned) {
+            return;
+        }
+
+        $pointsPerOrder = (int) (\App\Models\Setting::where('key', 'loyalty_points_per_order')->value('value') ?? 10);
+        $customer = \App\Models\User::find($order->user_id);
+        if ($customer) {
+            $customer->increment('loyalty_points', $pointsPerOrder);
+            $order->update(['points_earned' => $pointsPerOrder]);
+        }
     }
 
     public function supervisorIndex(Request $request)
@@ -212,6 +218,8 @@ class OrderController extends Controller
             'expires_at'            => null,
         ]);
 
+        $this->awardLoyaltyPoints($order);
+
         return response()->json($order->load(['orderItems.menu', 'orderItems.packaging', 'invoice', 'deliveryAgent', 'assignedBySupervisor', 'completedBy']));
     }
 
@@ -245,6 +253,8 @@ class OrderController extends Controller
             'completed_at'          => now(),
             'expires_at'            => null,
         ]);
+
+        $this->awardLoyaltyPoints($order);
 
         return response()->json($order->load(['orderItems.menu', 'orderItems.packaging', 'invoice', 'deliveryAgent', 'assignedBySupervisor', 'completedBy']));
     }

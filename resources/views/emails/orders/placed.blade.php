@@ -376,7 +376,7 @@
 
             <!-- Track Order Button -->
             <div style="text-align: center;">
-                <a href="https://eatwella.ng/orders/track/{{ $order->order_number }}" class="track-button">
+                <a href="https://eatwella.ng/track-order" class="track-button">
                     📱 Track Your Order
                 </a>
             </div>
