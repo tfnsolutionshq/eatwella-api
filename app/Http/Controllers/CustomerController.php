@@ -26,6 +26,32 @@ class CustomerController extends Controller
         return response()->json(['takeaway_price' => round($price, 2)]);
     }
 
+    private function checkAvailabilityHours(): void
+    {
+        $hoursJson = \App\Models\Setting::where('key', 'availability_hours')->value('value');
+        if (!$hoursJson) return;
+
+        $hours = json_decode($hoursJson, true);
+        if (empty($hours)) return;
+
+        $tz  = \App\Models\Setting::where('key', 'restaurant_timezone')->value('value') ?? 'Africa/Lagos';
+        $now = \Carbon\Carbon::now($tz);
+        $day = $now->format('l');
+
+        $entry = collect($hours)->firstWhere('day', $day);
+
+        if (!$entry || !($entry['enabled'] ?? false)) {
+            abort(403, 'Restaurant is currently closed.');
+        }
+
+        $open  = \Carbon\Carbon::createFromFormat('H:i', $entry['open'],  $tz)->setDateFrom($now);
+        $close = \Carbon\Carbon::createFromFormat('H:i', $entry['close'], $tz)->setDateFrom($now);
+
+        if ($now->lt($open) || $now->gt($close)) {
+            abort(403, 'Restaurant is currently closed.');
+        }
+    }
+
     public function listMenus(Request $request)
     {
         $query = Menu::where('is_available', true)->with('category');
@@ -83,6 +109,8 @@ class CustomerController extends Controller
 
     public function checkout(Request $request)
     {
+        $this->checkAvailabilityHours();
+
         $user = auth('sanctum')->user();
         if ($user) {
             $role = strtolower(trim($user->role));
@@ -303,20 +331,22 @@ class CustomerController extends Controller
             $orderUserId = $isCustomer ? $user->id : null;
             $attendantId = $isAttendant ? $user->id : null;
 
+            // Generate order number upfront for all payment types
+            $orderNumber = Order::generateOrderNumber();
+
             // Handle payment based on payment type
             if ($validated['payment_type'] === 'gateway') {
-                // Initialize Payment with Paystack
+                // Initialize Payment with Paystack using our order number as reference
                 $paymentResult = $this->paymentGateway->charge(
                     $finalAmount,
                     $customerEmail,
-                    ['callback_url' => 'https://eatwella.tfnsolutions.us/api/payment/callback']
+                    ['callback_url' => 'https://eatwella.tfnsolutions.us/api/payment/callback', 'reference' => $orderNumber]
                 );
 
                 if ($paymentResult['status'] === 'failed') {
                     throw new \Exception('Payment initialization failed: '.($paymentResult['message'] ?? 'Unknown error'));
                 }
 
-                $orderNumber = $paymentResult['reference'];
                 $orderStatus = 'pending';
                 $paymentStatus = 'unpaid';
                 $paymentMethod = 'paystack';
@@ -340,14 +370,11 @@ class CustomerController extends Controller
 
                 $user->decrement('loyalty_points', $pointsNeeded);
 
-                $orderNumber = 'ORD-'.strtoupper(Str::random(10));
                 $orderStatus = 'confirmed';
                 $paymentStatus = 'paid';
                 $paymentMethod = 'loyalty_points';
             } else {
                 // Cash payment
-                $orderNumber = 'ORD-'.strtoupper(Str::random(10));
-                
                 if ($isAttendant) {
                     // Attendant placed order with cash: assumed paid/confirmed immediately
                     $orderStatus = 'confirmed';
@@ -449,7 +476,7 @@ class CustomerController extends Controller
 
     public function trackOrder($identifier)
     {
-        $order = Order::where('order_number', $identifier)
+        $order = Order::whereRaw('UPPER(order_number) = ?', [strtoupper($identifier)])
             ->orWhere('id', $identifier)
             ->with(['orderItems.menu', 'orderItems.packaging', 'invoice', 'deliveryAgent', 'assignedBySupervisor', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name'])
             ->firstOrFail();

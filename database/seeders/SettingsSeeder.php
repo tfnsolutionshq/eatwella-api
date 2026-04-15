@@ -31,5 +31,10 @@ class SettingsSeeder extends Seeder
             ['key' => 'delivery_fee'],
             ['value' => '0', 'description' => 'Flat delivery fee applied to delivery orders']
         );
+
+        Setting::firstOrCreate(
+            ['key' => 'restaurant_timezone'],
+            ['value' => 'Africa/Lagos', 'description' => 'Timezone of the restaurant location']
+        );
     }
 }

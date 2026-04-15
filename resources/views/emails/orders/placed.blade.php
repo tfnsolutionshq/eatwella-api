@@ -280,7 +280,7 @@
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <img src="{{ asset('logo.jpg') }}" alt="EatWella" class="logo">
+            <img src="{{ asset('eatwella.png') }}" alt="EatWella" class="logo">
             <h1>✓ Order Confirmed!</h1>
             <p>Thank you for choosing EatWella</p>
         </div>

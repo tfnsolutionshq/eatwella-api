@@ -113,7 +113,7 @@ class PaymentController extends Controller
             return response()->json(['message' => 'No reference provided'], 400);
         }
 
-        $order = Order::where('order_number', $reference)
+        $order = Order::whereRaw('UPPER(order_number) = ?', [strtoupper($reference)])
             ->with(['orderItems.menu', 'invoice'])
             ->first();
 
@@ -160,7 +160,7 @@ class PaymentController extends Controller
             return redirect('https://eatwella.ng');
         }
 
-        $order = Order::where('order_number', $reference)->first();
+        $order = Order::whereRaw('UPPER(order_number) = ?', [strtoupper($reference)])->first();
 
         if (!$order) {
             return redirect('https://eatwella.ng');
@@ -213,7 +213,7 @@ class PaymentController extends Controller
             $status = $data['status'];
 
             // Find order by reference and update status
-            $order = Order::where('order_number', $reference)->first();
+            $order = Order::whereRaw('UPPER(order_number) = ?', [strtoupper($reference)])->first();
 
             if ($order && $status === 'success') {
                 if ($order->status === 'pending') {

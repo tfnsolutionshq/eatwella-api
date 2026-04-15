@@ -41,7 +41,7 @@ class KitchenController extends Controller
 
         $updatedCount = Order::whereIn('id', $validated['order_ids'])
             ->where('status', 'confirmed')
-            ->update(['status' => 'processing']);
+            ->update(['status' => 'processing', 'preparing_at' => now()]);
 
         return response()->json([
             'message' => "Successfully marked {$updatedCount} order(s) as preparing.",
@@ -65,7 +65,7 @@ class KitchenController extends Controller
 
         $updatedCount = Order::whereIn('id', $validated['order_ids'])
             ->whereIn('status', ['confirmed', 'processing'])
-            ->update(['status' => 'ready']);
+            ->update(['status' => 'ready', 'ready_at' => now()]);
 
         return response()->json([
             'message' => "Successfully marked {$updatedCount} order(s) as ready.",

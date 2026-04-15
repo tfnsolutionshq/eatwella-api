@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Str;
 
 class Order extends Model
 {
@@ -50,6 +51,8 @@ class Order extends Model
         'expires_at' => 'datetime',
         'assigned_at' => 'datetime',
         'completed_at' => 'datetime',
+        'preparing_at' => 'datetime',
+        'ready_at'     => 'datetime',
         'tax_details' => 'array',
         'tax_amount' => 'decimal:2',
         'delivery_fee' => 'decimal:2',
@@ -60,6 +63,22 @@ class Order extends Model
     ];
 
     protected $appends = ['completion_time_minutes'];
+
+    public static function generateOrderNumber(): string
+    {
+        do {
+            $number = 'EW' . strtoupper(Str::random(8));
+        } while (self::whereRaw('UPPER(order_number) = ?', [$number])->exists());
+
+        return $number;
+    }
+
+    public function resolveRouteBinding($value, $field = null)
+    {
+        return $this->where($field ?? $this->getRouteKeyName(), $value)
+            ->orWhereRaw('UPPER(' . ($field ?? $this->getRouteKeyName()) . ') = ?', [strtoupper($value)])
+            ->firstOrFail();
+    }
 
     public function getCompletionTimeMinutesAttribute()
     {

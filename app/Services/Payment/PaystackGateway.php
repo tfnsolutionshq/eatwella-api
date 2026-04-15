@@ -24,12 +24,16 @@ class PaystackGateway implements PaymentGatewayInterface
         }
 
         // Initialize transaction and return authorization URL
+        $payload = [
+            'email' => $email,
+            'amount' => (int) ($amount * 100),
+            'callback_url' => $data['callback_url'] ?? null,
+        ];
+        if (!empty($data['reference'])) {
+            $payload['reference'] = $data['reference'];
+        }
         $response = Http::withToken($this->secretKey)
-            ->post('https://api.paystack.co/transaction/initialize', [
-                'email' => $email,
-                'amount' => (int) ($amount * 100), // Convert to kobo as integer
-                'callback_url' => $data['callback_url'] ?? null,
-            ]);
+            ->post('https://api.paystack.co/transaction/initialize', $payload);
 
         if ($response->successful() && $response->json('status')) {
             return [
