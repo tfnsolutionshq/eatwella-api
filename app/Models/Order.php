@@ -67,7 +67,7 @@ class Order extends Model
     public static function generateOrderNumber(): string
     {
         do {
-            $number = 'EW' . strtoupper(Str::random(8));
+            $number = 'EW' . strtoupper(substr(str_replace(['/', '+', '='], '', base64_encode(random_bytes(8))), 0, 8));
         } while (self::whereRaw('UPPER(order_number) = ?', [$number])->exists());
 
         return $number;

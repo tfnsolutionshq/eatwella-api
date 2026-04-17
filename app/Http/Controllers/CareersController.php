@@ -23,6 +23,13 @@ class CareersController extends Controller
         return response()->json($openings);
     }
 
+    public function showOpening($id)
+    {
+        $opening = CareerOpening::findOrFail($id);
+
+        return response()->json($opening);
+    }
+
     public function index(Request $request)
     {
         if ($response = $this->requireRole($request, ['admin'])) {

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AddressController;
 use App\Http\Controllers\Admin\AnalyticsController;
+use App\Http\Controllers\Admin\CampaignController;
 use App\Http\Controllers\Admin\CareerOpeningController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\TaxController;
@@ -44,6 +45,7 @@ Route::get('/takeaway-price', [CustomerController::class, 'takeawayPrice']);
 Route::post('/checkout', [CustomerController::class, 'checkout']);
 Route::get('/orders/track/{identifier}', [CustomerController::class, 'trackOrder']);
 Route::get('/careers/openings', [CareersController::class, 'listOpenings']);
+Route::get('/careers/openings/{id}', [CareersController::class, 'showOpening']);
 Route::post('/careers/apply', [CareersController::class, 'store']);
 
 // Locations / Zones
@@ -84,6 +86,10 @@ Route::get('/payment/callback', [PaymentController::class, 'paymentCallback']);
 Route::post('/payment/webhook', [PaymentController::class, 'webhook']);
 
 Route::get('/availability-hours', [SettingsController::class, 'getAvailabilityHours']);
+
+// Public Campaign Routes
+Route::get('/campaigns', [CampaignController::class, 'publicIndex']);
+Route::get('/campaigns/{campaign}', [CampaignController::class, 'publicShow']);
 
 // Admin Protected Routes
 Route::middleware('auth:sanctum')->group(function () {
@@ -181,6 +187,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/top-menus', [AnalyticsController::class, 'topMenus']);
         Route::get('/daily-sales', [AnalyticsController::class, 'dailySales']);
     });
+
+    // Campaign Management
+    Route::apiResource('admin/campaigns', CampaignController::class);
+    Route::post('/admin/campaigns/{campaign}', [CampaignController::class, 'update']); // multipart/form-data fallback
+    Route::patch('/admin/campaigns/{campaign}/publish', [CampaignController::class, 'publish']);
+    Route::patch('/admin/campaigns/{campaign}/draft', [CampaignController::class, 'draft']);
 
     // Locations / Zones Admin Management
     Route::apiResource('admin/zones', \App\Http\Controllers\Admin\ZoneController::class);

@@ -18,11 +18,6 @@ class PaystackGateway implements PaymentGatewayInterface
 
     public function charge(float $amount, string $email, array $data): array
     {
-        // If reference provided, verify the transaction
-        if (isset($data['reference'])) {
-            return $this->verifyTransaction($data['reference']);
-        }
-
         // Initialize transaction and return authorization URL
         $payload = [
             'email' => $email,
@@ -30,7 +25,7 @@ class PaystackGateway implements PaymentGatewayInterface
             'callback_url' => $data['callback_url'] ?? null,
         ];
         if (!empty($data['reference'])) {
-            $payload['reference'] = $data['reference'];
+            $payload['reference'] = strtolower($data['reference']);
         }
         $response = Http::withToken($this->secretKey)
             ->post('https://api.paystack.co/transaction/initialize', $payload);

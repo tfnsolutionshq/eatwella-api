@@ -44,8 +44,8 @@ class CustomerController extends Controller
             abort(403, 'Restaurant is currently closed.');
         }
 
-        $open  = \Carbon\Carbon::createFromFormat('H:i', $entry['open'],  $tz)->setDateFrom($now);
-        $close = \Carbon\Carbon::createFromFormat('H:i', $entry['close'], $tz)->setDateFrom($now);
+        $open  = \Carbon\Carbon::createFromFormat('g:i A', $entry['open'],  $tz)->setDateFrom($now);
+        $close = \Carbon\Carbon::createFromFormat('g:i A', $entry['close'], $tz)->setDateFrom($now);
 
         if ($now->lt($open) || $now->gt($close)) {
             abort(403, 'Restaurant is currently closed.');
