@@ -11,6 +11,7 @@ use App\Models\Menu;
 use App\Models\Order;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
@@ -208,6 +209,10 @@ class CustomerController extends Controller
                     throw new \Exception("Menu {$menu->name} is unavailable.");
                 }
 
+                if ($menu->stock_quantity !== null && $menu->stock_quantity < $item['quantity']) {
+                    throw new \Exception("Insufficient stock for {$menu->name}. Only {$menu->stock_quantity} left.");
+                }
+
                 $subtotal = $menu->price * $item['quantity'];
                 $totalAmount += $subtotal;
 
@@ -384,7 +389,7 @@ class CustomerController extends Controller
                     $orderStatus = 'pending';
                     $paymentStatus = 'pending';
                 }
-                
+
                 $paymentMethod = 'cash';
             }
 
@@ -431,6 +436,14 @@ class CustomerController extends Controller
                 $order->orderItems()->create($data);
             }
 
+            // Deduct stock
+            foreach ($orderItemsData as $data) {
+                $menu = Menu::find($data['menu_id']);
+                if ($menu) {
+                    $menu->deductStock($data['quantity'], $user?->id);
+                }
+            }
+
             // Create Invoice
             $invoice = Invoice::create([
                 'order_id' => $order->id,
@@ -466,7 +479,7 @@ class CustomerController extends Controller
                 try {
                     Mail::to($order->customer_email)->send(new OrderPlaced($order));
                 } catch (\Exception $e) {
-                    \Log::error('Failed to send order email: '.$e->getMessage());
+                    Log::error('Failed to send order email: '.$e->getMessage());
                 }
             }
 

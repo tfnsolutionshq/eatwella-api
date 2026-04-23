@@ -19,11 +19,14 @@ class Menu extends Model
         'images',
         'is_available',
         'requires_takeaway',
+        'stock_quantity',
     ];
 
     protected $casts = [
         'images'             => 'array',
         'requires_takeaway'  => 'boolean',
+        'is_available'       => 'boolean',
+        'stock_quantity'     => 'integer',
     ];
 
     // Accessor to get full image URLs
@@ -47,6 +50,33 @@ class Menu extends Model
     public function orderItems()
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    public function inventoryLogs()
+    {
+        return $this->hasMany(InventoryLog::class);
+    }
+
+    public function deductStock(int $quantity, ?int $userId = null): void
+    {
+        $before = $this->stock_quantity;
+        $after  = max(0, $before - $quantity);
+
+        $this->stock_quantity = $after;
+        if ($after === 0) {
+            $this->is_available = false;
+        }
+        $this->save();
+
+        InventoryLog::create([
+            'menu_id'          => $this->id,
+            'user_id'          => $userId,
+            'type'             => 'deduction',
+            'quantity_before'  => $before,
+            'quantity_changed' => -$quantity,
+            'quantity_after'   => $after,
+            'note'             => 'Order deduction',
+        ]);
     }
 
     public function complements()

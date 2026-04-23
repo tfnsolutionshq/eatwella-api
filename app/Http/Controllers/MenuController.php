@@ -40,6 +40,7 @@ class MenuController extends Controller
             'images.*' => 'image|max:2048',
             'is_available' => 'boolean',
             'requires_takeaway' => 'boolean',
+            'stock_quantity' => 'nullable|integer|min:0',
             'complements' => 'nullable|array',
             'complements.*' => 'uuid|exists:menus,id',
         ]);
@@ -90,6 +91,7 @@ class MenuController extends Controller
             'images.*' => 'image|max:2048',
             'is_available' => 'boolean',
             'requires_takeaway' => 'boolean',
+            'stock_quantity' => 'nullable|integer|min:0',
             'complements' => 'nullable|array',
             'complements.*' => 'uuid|exists:menus,id',
         ]);
@@ -126,6 +128,59 @@ class MenuController extends Controller
         }
 
         return response()->json($menu->load('complements'));
+    }
+
+    public function updateStock(Request $request, Menu $menu)
+    {
+        if ($response = $this->requireRole($request, ['admin', 'supervisor'])) {
+            return $response;
+        }
+
+        $validated = $request->validate([
+            'quantity' => 'required|integer|min:1',
+            'note'     => 'nullable|string|max:500',
+        ]);
+
+        $before = $menu->stock_quantity;
+        $after  = $before + $validated['quantity'];
+
+        $menu->stock_quantity = $after;
+        if ($after > 0 && ! $menu->is_available) {
+            $menu->is_available = true;
+        }
+        $menu->save();
+
+        \App\Models\InventoryLog::create([
+            'menu_id'          => $menu->id,
+            'user_id'          => $request->user()->id,
+            'type'             => 'restock',
+            'quantity_before'  => $before,
+            'quantity_changed' => $validated['quantity'],
+            'quantity_after'   => $after,
+            'note'             => $validated['note'] ?? null,
+        ]);
+
+        return response()->json([
+            'message'          => 'Stock updated successfully',
+            'menu_id'          => $menu->id,
+            'quantity_before'  => $before,
+            'quantity_added'   => $validated['quantity'],
+            'quantity_after'   => $after,
+        ]);
+    }
+
+    public function inventoryLogs(Request $request, Menu $menu)
+    {
+        if ($response = $this->requireRole($request, ['admin', 'supervisor'])) {
+            return $response;
+        }
+
+        $logs = $menu->inventoryLogs()
+            ->with('user:id,name,role')
+            ->latest()
+            ->paginate($request->get('per_page', 15));
+
+        return response()->json($logs);
     }
 
     public function destroy(Request $request, Menu $menu)

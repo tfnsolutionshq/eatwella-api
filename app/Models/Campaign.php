@@ -11,6 +11,7 @@ class Campaign extends Model
 
     protected $fillable = [
         'title',
+        'brief',
         'details',
         'image_path',
         'start_date',

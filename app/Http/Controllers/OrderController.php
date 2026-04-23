@@ -143,7 +143,7 @@ class OrderController extends Controller
 
     public function assignDeliveryAgent(Request $request, Order $order)
     {
-        if ($response = $this->requireRole($request, ['supervisor'])) {
+        if ($response = $this->requireRole($request, ['supervisor', 'admin'])) {
             return $response;
         }
 
