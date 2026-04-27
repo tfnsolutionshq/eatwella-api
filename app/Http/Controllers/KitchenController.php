@@ -18,8 +18,8 @@ class KitchenController extends Controller
         }
 
         $orders = Order::with(['orderItems.menu', 'orderItems.packaging'])
-            ->whereIn('status', ['confirmed', 'processing'])
-            ->orderBy('created_at', 'asc')
+            ->where('status', 'in_kitchen')
+            ->orderBy('sent_to_kitchen_at', 'asc')
             ->get();
 
         return response()->json($orders);
@@ -40,7 +40,7 @@ class KitchenController extends Controller
         ]);
 
         $updatedCount = Order::whereIn('id', $validated['order_ids'])
-            ->where('status', 'confirmed')
+            ->where('status', 'in_kitchen')
             ->update(['status' => 'processing', 'preparing_at' => now()]);
 
         return response()->json([
@@ -64,7 +64,7 @@ class KitchenController extends Controller
         ]);
 
         $updatedCount = Order::whereIn('id', $validated['order_ids'])
-            ->whereIn('status', ['confirmed', 'processing'])
+            ->whereIn('status', ['in_kitchen', 'processing'])
             ->update(['status' => 'ready', 'ready_at' => now()]);
 
         return response()->json([

@@ -46,7 +46,7 @@ class OrderController extends Controller
         // We'll remove this restriction so they can process any order.
 
         $validated = $request->validate([
-            'status' => 'required|in:pending,processing,confirmed,ready,dispatched,completed,cancelled',
+            'status' => 'required|in:pending,processing,confirmed,in_kitchen,ready,dispatched,completed,cancelled',
         ]);
 
         $originalStatus = $order->status;
@@ -75,6 +75,25 @@ class OrderController extends Controller
         }
 
         return response()->json($order->load('completedBy'));
+    }
+
+    public function sendToKitchen(Request $request, Order $order)
+    {
+        if ($response = $this->requireRole($request, ['admin', 'attendant', 'supervisor'])) {
+            return $response;
+        }
+
+        if ($order->status !== 'confirmed') {
+            return response()->json(['message' => 'Only confirmed orders can be sent to kitchen'], 422);
+        }
+
+        $order->update([
+            'status'                => 'in_kitchen',
+            'sent_to_kitchen_by_id' => $request->user()->id,
+            'sent_to_kitchen_at'    => now(),
+        ]);
+
+        return response()->json($order->load('sentToKitchenBy'));
     }
 
     private function awardLoyaltyPoints(Order $order): void

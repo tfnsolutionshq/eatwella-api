@@ -44,6 +44,8 @@ class Order extends Model
         'delivery_note',
         'delivery_zone_id',
         'completed_by_id',
+        'sent_to_kitchen_by_id',
+        'sent_to_kitchen_at',
         'completed_at',
     ];
 
@@ -51,6 +53,7 @@ class Order extends Model
         'expires_at' => 'datetime',
         'assigned_at' => 'datetime',
         'completed_at' => 'datetime',
+        'sent_to_kitchen_at' => 'datetime',
         'preparing_at' => 'datetime',
         'ready_at'     => 'datetime',
         'tax_details' => 'array',
@@ -116,6 +119,11 @@ class Order extends Model
     public function assignedBySupervisor()
     {
         return $this->belongsTo(User::class, 'assigned_by_supervisor_id');
+    }
+
+    public function sentToKitchenBy()
+    {
+        return $this->belongsTo(User::class, 'sent_to_kitchen_by_id');
     }
 
     public function completedBy()
