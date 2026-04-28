@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AddressController;
+use App\Http\Controllers\Admin\DeleteController;
 use App\Http\Controllers\Admin\AnalyticsController;
 use App\Http\Controllers\Admin\CampaignController;
 use App\Http\Controllers\Admin\CareerOpeningController;
@@ -155,8 +156,12 @@ Route::middleware('auth:sanctum')->group(function () {
     // Registered Users Management
     Route::get('/admin/users', [UserController::class, 'index']);
     Route::get('/admin/users/{user}', [UserController::class, 'show']);
+    Route::put('/admin/users/{user}', [UserController::class, 'updateUserProfile']);
+    Route::patch('/admin/users/{user}/suspend', [UserController::class, 'suspend']);
+    Route::patch('/admin/users/{user}/unsuspend', [UserController::class, 'unsuspend']);
     Route::post('/admin/attendants', [UserController::class, 'storeAttendant']);
     Route::post('/admin/staff', [UserController::class, 'storeStaff']);
+    Route::put('/admin/profile', [UserController::class, 'updateProfile']);
 
     // Order Management
     Route::post('/admin/orders/{order}/send-to-kitchen', [OrderController::class, 'sendToKitchen']);
@@ -189,6 +194,26 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/summary', [AnalyticsController::class, 'summary']);
         Route::get('/top-menus', [AnalyticsController::class, 'topMenus']);
         Route::get('/daily-sales', [AnalyticsController::class, 'dailySales']);
+    });
+
+    // Bulk Delete
+    Route::prefix('admin')->group(function () {
+        Route::delete('/users',                [DeleteController::class, 'users']);
+        Route::delete('/orders',               [DeleteController::class, 'orders']);
+        Route::delete('/carts',                [DeleteController::class, 'carts']);
+        Route::delete('/reviews',              [DeleteController::class, 'reviews']);
+        Route::delete('/menus',                [DeleteController::class, 'menus']);
+        Route::delete('/categories',           [DeleteController::class, 'categories']);
+        Route::delete('/discounts',            [DeleteController::class, 'discounts']);
+        Route::delete('/taxes',                [DeleteController::class, 'taxes']);
+        Route::delete('/zones',                [DeleteController::class, 'zones']);
+        Route::delete('/tables',               [DeleteController::class, 'tables']);
+        Route::delete('/packagings',           [DeleteController::class, 'packagings']);
+        Route::delete('/campaigns',            [DeleteController::class, 'campaigns']);
+        Route::delete('/careers/applications', [DeleteController::class, 'careerApplications']);
+        Route::delete('/careers/openings',     [DeleteController::class, 'careerOpenings']);
+        Route::delete('/inventory-logs',        [DeleteController::class, 'inventoryLogs']);
+        Route::delete('/settings',              [DeleteController::class, 'settings']);
     });
 
     // Campaign Management

@@ -27,6 +27,7 @@ class User extends Authenticatable
         'phone',
         'birthday',
         'loyalty_points',
+        'is_suspended',
     ];
 
     /**
@@ -50,6 +51,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'birthday' => 'date',
+            'is_suspended' => 'boolean',
         ];
     }
 

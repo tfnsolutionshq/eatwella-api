@@ -68,4 +68,76 @@ class UserController extends Controller
 
         return $this->storeStaff($request);
     }
+
+    public function updateProfile(Request $request)
+    {
+        if ($response = $this->requireRole($request, ['admin'])) {
+            return $response;
+        }
+
+        $validated = $request->validate([
+            'name'     => 'nullable|string|max:255',
+            'phone'    => 'nullable|string|max:20',
+            'birthday' => 'nullable|date',
+            'email'    => 'nullable|email|unique:users,email,' . $request->user()->id,
+        ]);
+
+        $request->user()->update(array_filter($validated, fn($v) => !is_null($v)));
+
+        return response()->json([
+            'message' => 'Profile updated successfully',
+            'user'    => $request->user()->fresh(),
+        ]);
+    }
+
+    private const SUSPENDABLE_ROLES = ['attendant', 'supervisor', 'delivery_agent', 'kitchen'];
+
+    public function suspend(Request $request, User $user)
+    {
+        if ($response = $this->requireRole($request, ['admin'])) {
+            return $response;
+        }
+
+        if (! in_array($user->role, self::SUSPENDABLE_ROLES, true)) {
+            return response()->json(['status' => false, 'message' => 'This user cannot be suspended.'], 422);
+        }
+
+        $user->update(['is_suspended' => true]);
+        $user->tokens()->delete();
+
+        return response()->json(['status' => true, 'message' => 'User suspended successfully.']);
+    }
+
+    public function unsuspend(Request $request, User $user)
+    {
+        if ($response = $this->requireRole($request, ['admin'])) {
+            return $response;
+        }
+
+        $user->update(['is_suspended' => false]);
+
+        return response()->json(['status' => true, 'message' => 'User unsuspended successfully.']);
+    }
+
+    public function updateUserProfile(Request $request, User $user)
+    {
+        if ($response = $this->requireRole($request, ['admin'])) {
+            return $response;
+        }
+
+        $validated = $request->validate([
+            'name'     => 'nullable|string|max:255',
+            'phone'    => 'nullable|string|max:20',
+            'birthday' => 'nullable|date',
+            'email'    => 'nullable|email|unique:users,email,' . $user->id,
+            'role'     => 'nullable|in:customer,attendant,supervisor,delivery_agent,kitchen,admin',
+        ]);
+
+        $user->update(array_filter($validated, fn($v) => !is_null($v)));
+
+        return response()->json([
+            'message' => 'User profile updated successfully',
+            'user'    => $user->fresh(),
+        ]);
+    }
 }

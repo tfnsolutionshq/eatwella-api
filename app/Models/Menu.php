@@ -57,7 +57,7 @@ class Menu extends Model
         return $this->hasMany(InventoryLog::class);
     }
 
-    public function deductStock(int $quantity, ?int $userId = null): void
+    public function deductStock(int $quantity, ?string $userId = null): void
     {
         $before = $this->stock_quantity;
         $after  = max(0, $before - $quantity);
