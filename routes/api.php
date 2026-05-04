@@ -225,4 +225,12 @@ Route::middleware('auth:sanctum')->group(function () {
     // Locations / Zones Admin Management
     Route::apiResource('admin/zones', \App\Http\Controllers\Admin\ZoneController::class);
     Route::patch('/admin/zones/{zone}/toggle', [\App\Http\Controllers\Admin\ZoneController::class, 'toggle']);
+
+    // States & Cities Admin Management
+    Route::post('/admin/states', [LocationController::class, 'storeState']);
+    Route::put('/admin/states/{state}', [LocationController::class, 'updateState']);
+    Route::delete('/admin/states/{state}', [LocationController::class, 'destroyState']);
+    Route::post('/admin/cities', [LocationController::class, 'storeCity']);
+    Route::put('/admin/cities/{city}', [LocationController::class, 'updateCity']);
+    Route::delete('/admin/cities/{city}', [LocationController::class, 'destroyCity']);
 });
