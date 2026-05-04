@@ -29,7 +29,7 @@ class OrderController extends Controller
             return $response;
         }
 
-        return $order->load(['orderItems.menu', 'orderItems.packaging', 'invoice', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name']);
+        return $order->load(['orderItems.menu', 'orderItems.packaging', 'invoice', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor', 'deliveryZone.city.state', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name']);
     }
 
     public function update(Request $request, Order $order)
@@ -157,7 +157,7 @@ class OrderController extends Controller
             return $response;
         }
 
-        return $order->load(['orderItems.menu', 'orderItems.packaging', 'invoice', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor', 'completedBy']);
+        return $order->load(['orderItems.menu', 'orderItems.packaging', 'invoice', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor', 'completedBy', 'deliveryZone.city.state']);
     }
 
     public function assignDeliveryAgent(Request $request, Order $order)
@@ -190,7 +190,7 @@ class OrderController extends Controller
             Mail::to($agent->email)->send(new \App\Mail\OrderAssignedToAgent($order, $agent));
         }
 
-        return response()->json($order->load(['orderItems.menu', 'orderItems.packaging', 'invoice', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor']));
+        return response()->json($order->load(['orderItems.menu', 'orderItems.packaging', 'invoice', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor', 'deliveryZone.city.state']));
     }
 
     public function deliveryAgentShow(Request $request, Order $order)
@@ -203,7 +203,7 @@ class OrderController extends Controller
             return response()->json(['message' => 'Order not found'], 404);
         }
 
-        return $order->load(['orderItems.menu', 'orderItems.packaging', 'invoice', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor']);
+        return $order->load(['orderItems.menu', 'orderItems.packaging', 'invoice', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor', 'deliveryZone.city.state']);
     }
 
     public function completeDelivery(Request $request, Order $order)

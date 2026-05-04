@@ -127,7 +127,7 @@ class CustomerController extends Controller
 
         $rules = [
             'order_type' => 'required|in:dine,pickup,delivery',
-            'payment_type' => 'required|in:cash,gateway,loyalty_points',
+            'payment_type' => 'required|in:cash,pos,transfer,gateway,loyalty_points',
             'items' => 'nullable|array',
             'items.*.menu_id' => 'required_with:items|exists:menus,id',
             'items.*.quantity' => 'required_with:items|integer|min:1',
@@ -379,9 +379,9 @@ class CustomerController extends Controller
                 $paymentStatus = 'paid';
                 $paymentMethod = 'loyalty_points';
             } else {
-                // Cash payment
+                // Cash / POS / Transfer payment
                 if ($isAttendant) {
-                    // Attendant placed order with cash: assumed paid/confirmed immediately
+                    // Attendant placed order: assumed paid/confirmed immediately
                     $orderStatus = 'confirmed';
                     $paymentStatus = 'paid';
                 } else {
@@ -390,12 +390,12 @@ class CustomerController extends Controller
                     $paymentStatus = 'pending';
                 }
 
-                $paymentMethod = 'cash';
+                $paymentMethod = $validated['payment_type']; // cash, pos, or transfer
             }
 
             // Create Order
             $expiresAt = null;
-            if ($validated['payment_type'] === 'cash' && in_array($validated['order_type'], ['dine', 'pickup'])) {
+            if (in_array($validated['payment_type'], ['cash', 'pos', 'transfer']) && in_array($validated['order_type'], ['dine', 'pickup'])) {
                 $expiresAt = now()->addMinutes(45);
             }
 
@@ -461,7 +461,7 @@ class CustomerController extends Controller
             // Prepare response
             $order->makeVisible('delivery_pin');
             $response = [
-                'message' => in_array($validated['payment_type'], ['cash', 'loyalty_points'])
+                'message' => in_array($validated['payment_type'], ['cash', 'pos', 'transfer', 'loyalty_points'])
                     ? 'Order placed successfully'
                     : 'Order created, proceed to payment',
                 'order' => $order->load('orderItems', 'invoice', 'deliveryAgent', 'assignedBySupervisor'),
@@ -475,7 +475,7 @@ class CustomerController extends Controller
             }
 
             // Send email after response data is ready (non-blocking)
-            if (in_array($validated['payment_type'], ['cash', 'loyalty_points'])) {
+            if (in_array($validated['payment_type'], ['cash', 'pos', 'transfer', 'loyalty_points'])) {
                 try {
                     Mail::to($order->customer_email)->send(new OrderPlaced($order));
                 } catch (\Exception $e) {
