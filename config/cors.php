@@ -24,7 +24,6 @@ return [
         'https://eatwella.tfnsolutions.us',
         'https://eatwella.ng',
         'https://www.eatwella.ng',
-        'www.eatwella.ng',
     ],
 
     'allowed_origins_patterns' => [],

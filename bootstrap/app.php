@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->job(\App\Jobs\CancelExpiredOrders::class)->everyMinute();
     })
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->prepend(\Illuminate\Http\Middleware\HandleCors::class);
         $middleware->api(prepend: [
             \Illuminate\Session\Middleware\StartSession::class,
         ]);
