@@ -18,7 +18,7 @@ class KitchenController extends Controller
         }
 
         $orders = Order::with(['orderItems.menu', 'orderItems.packaging'])
-            ->where('status', 'in_kitchen')
+            ->whereIn('status', ['in_kitchen', 'processing'])
             ->orderBy('sent_to_kitchen_at', 'asc')
             ->get();
 
