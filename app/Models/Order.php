@@ -140,4 +140,15 @@ class Order extends Model
     {
         return $this->hasOne(Review::class);
     }
+
+    public function deductItemsStock(): void
+    {
+        $this->loadMissing('orderItems');
+        foreach ($this->orderItems as $item) {
+            $menu = \App\Models\Menu::find($item->menu_id);
+            if ($menu) {
+                $menu->deductStock($item->quantity, $this->user_id);
+            }
+        }
+    }
 }

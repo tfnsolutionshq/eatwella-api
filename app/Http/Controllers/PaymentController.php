@@ -130,6 +130,7 @@ class PaymentController extends Controller
                 // Update order and invoice status
                 $order->update(['status' => 'confirmed']);
                 $order->invoice()->update(['payment_status' => 'paid']);
+                $order->deductItemsStock();
 
                 // Send confirmation email
                 Mail::to($order->customer_email)->send(new \App\Mail\OrderPlaced($order));
@@ -174,6 +175,7 @@ class PaymentController extends Controller
             if ($verificationResult['status'] === 'success') {
                 $order->update(['status' => 'confirmed']);
                 $order->invoice()->update(['payment_status' => 'paid']);
+                $order->deductItemsStock();
                 Mail::to($order->customer_email)->send(new \App\Mail\OrderPlaced($order));
                 Log::info("Order {$reference} payment confirmed via callback");
             }
@@ -218,13 +220,9 @@ class PaymentController extends Controller
             if ($order && $status === 'success') {
                 if ($order->status === 'pending') {
                     $order->update(['status' => 'confirmed']);
-
-                    // Update invoice to paid
                     $order->invoice()->update(['payment_status' => 'paid']);
-
-                    // Send confirmation email
+                    $order->deductItemsStock();
                     Mail::to($order->customer_email)->send(new \App\Mail\OrderPlaced($order));
-
                     Log::info("Order {$reference} payment confirmed via webhook");
                 } else {
                     Log::info("Order {$reference} was already confirmed, ignoring webhook");

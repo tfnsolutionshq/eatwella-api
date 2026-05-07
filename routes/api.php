@@ -122,6 +122,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Admin Resources
     Route::apiResource('admin/categories', CategoryController::class);
     Route::apiResource('admin/menus', MenuController::class);
+    Route::post('/admin/menus/{menu}', [MenuController::class, 'update']); // multipart/form-data fallback
     Route::patch('/admin/menus/{menu}/stock', [MenuController::class, 'updateStock']);
     Route::get('/admin/menus/{menu}/inventory-logs', [MenuController::class, 'inventoryLogs']);
     Route::apiResource('admin/discounts', DiscountController::class);

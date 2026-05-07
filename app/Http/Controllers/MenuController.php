@@ -96,23 +96,20 @@ class MenuController extends Controller
             'complements.*' => 'uuid|exists:menus,id',
         ]);
 
-        if ($request->hasFile('images')) {
-            // Option 1: Replace all images
-            // Option 2: Append. Let's assume Replace for PUT, or we can have a flag.
-            // For simplicity in a standard REST update, we often replace the field.
+        if ($request->hasFile('images') || $request->has('images')) {
+            if ($request->hasFile('images')) {
+                $oldImages = json_decode($menu->getRawOriginal('images'), true) ?? [];
+                foreach ($oldImages as $oldImage) {
+                    Storage::disk('public')->delete($oldImage);
+                }
 
-            // Delete old images
-            $oldImages = json_decode($menu->getRawOriginal('images'), true) ?? [];
-            foreach ($oldImages as $oldImage) {
-                 Storage::disk('public')->delete($oldImage);
+                $imagePaths = [];
+                foreach ($request->file('images') as $image) {
+                    $path = $image->store('menus', 'public');
+                    $imagePaths[] = $path;
+                }
+                $validated['images'] = $imagePaths;
             }
-
-            $imagePaths = [];
-            foreach ($request->file('images') as $image) {
-                $path = $image->store('menus', 'public');
-                $imagePaths[] = $path;
-            }
-            $validated['images'] = $imagePaths;
         }
 
         $menu->update($validated);

@@ -436,11 +436,13 @@ class CustomerController extends Controller
                 $order->orderItems()->create($data);
             }
 
-            // Deduct stock
-            foreach ($orderItemsData as $data) {
-                $menu = Menu::find($data['menu_id']);
-                if ($menu) {
-                    $menu->deductStock($data['quantity'], $user?->id);
+            // Deduct stock only for immediately confirmed orders (attendant or loyalty points)
+            if ($orderStatus === 'confirmed') {
+                foreach ($orderItemsData as $data) {
+                    $menu = Menu::find($data['menu_id']);
+                    if ($menu) {
+                        $menu->deductStock($data['quantity'], $user?->id);
+                    }
                 }
             }
 

@@ -53,21 +53,22 @@ class OrderController extends Controller
 
         $updateData = ['status' => $validated['status']];
 
-        // If status is changed from pending to confirmed, update invoice to paid
+        // If status is changed from pending to confirmed, update invoice to paid and deduct stock
         if ($validated['status'] === 'confirmed' && $originalStatus === 'pending') {
             if ($order->invoice) {
                 $order->invoice->update(['payment_status' => 'paid']);
             }
-            $updateData['expires_at'] = null; // Remove expiration if it was pending cash
+            $updateData['expires_at'] = null;
+            $order->update($updateData);
+            $order->deductItemsStock();
+        } else {
+            if ($validated['status'] === 'completed') {
+                $updateData['expires_at']      = null;
+                $updateData['completed_by_id'] = $user->id;
+                $updateData['completed_at']    = now();
+            }
+            $order->update($updateData);
         }
-
-        if ($validated['status'] === 'completed') {
-            $updateData['expires_at']      = null;
-            $updateData['completed_by_id'] = $user->id;
-            $updateData['completed_at']    = now();
-        }
-
-        $order->update($updateData);
 
         if ($validated['status'] === 'completed' && $originalStatus !== 'completed') {
             Mail::to($order->customer_email)->send(new OrderCompleted($order));
