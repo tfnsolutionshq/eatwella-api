@@ -110,9 +110,12 @@ class CustomerController extends Controller
 
     public function checkout(Request $request)
     {
-        $this->checkAvailabilityHours();
-
         $user = auth('sanctum')->user();
+        $isStaff = $user && in_array(strtolower(trim($user->role)), ['attendant', 'admin', 'supervisor'], true);
+
+        if (!$isStaff) {
+            $this->checkAvailabilityHours();
+        }
         if ($user) {
             $role = strtolower(trim($user->role));
             if (! in_array($role, ['customer', 'attendant'], true)) {
