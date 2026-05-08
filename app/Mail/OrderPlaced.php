@@ -19,7 +19,7 @@ class OrderPlaced extends Mailable
      */
     public function __construct(public Order $order)
     {
-        //
+        $this->order->loadMissing('deliveryZone.city.state');
     }
 
     /**

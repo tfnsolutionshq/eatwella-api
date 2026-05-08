@@ -10,10 +10,11 @@ class UserController extends Controller
 {
     public function index(Request $request)
     {
-        if ($response = $this->requireRole($request, ['admin'])) {
+        if ($response = $this->requireRole($request, ['admin', 'attendant', 'supervisor'])) {
             return $response;
         }
-        $query = User::with('addresses');
+        $query = User::with('addresses')
+            ->where('email', '!=', 'eatwella@gmail.com');
 
         if ($request->filled('role')) {
             $query->where('role', $request->role);

@@ -2,9 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\OrderAssignedToAgent;
+use App\Mail\OrderCancelled;
 use App\Mail\OrderCompleted;
+use App\Models\InventoryLog;
+use App\Models\Menu;
 use App\Models\Order;
+use App\Models\Setting;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class OrderController extends Controller
@@ -19,6 +26,8 @@ class OrderController extends Controller
         if ($request->has('status')) {
             $query->where('status', $request->status);
         }
+
+        $this->applySearch($query, $request);
 
         return $query->latest()->paginate($request->get('per_page', 15));
     }
@@ -50,6 +59,56 @@ class OrderController extends Controller
         ]);
 
         $originalStatus = $order->status;
+
+        // Prevent cancellation of gateway-confirmed orders
+        if ($validated['status'] === 'cancelled') {
+            if (! in_array($user->role, ['admin', 'supervisor'], true)) {
+                return response()->json(['status' => false, 'message' => 'Only admins and supervisors can cancel orders.'], 403);
+            }
+            if ($originalStatus === 'confirmed' && $order->payment_type === 'gateway') {
+                return response()->json(['status' => false, 'message' => 'Gateway-confirmed orders cannot be cancelled.'], 422);
+            }
+
+            $order->update(['status' => 'cancelled']);
+
+            // Restore stock if order was confirmed (stock was already deducted)
+            if ($originalStatus === 'confirmed') {
+                $order->loadMissing('orderItems');
+                foreach ($order->orderItems as $item) {
+                    $menu = Menu::find($item->menu_id);
+                    if ($menu && $menu->stock_quantity !== null) {
+                        $before = $menu->stock_quantity;
+                        $after  = $before + $item->quantity;
+                        $menu->update(['stock_quantity' => $after, 'is_available' => true]);
+                        InventoryLog::create([
+                            'menu_id'          => $menu->id,
+                            'user_id'          => $user->id,
+                            'type'             => 'restock',
+                            'quantity_before'  => $before,
+                            'quantity_changed' => $item->quantity,
+                            'quantity_after'   => $after,
+                            'note'             => 'Stock restored due to order cancellation #' . $order->order_number,
+                        ]);
+                    }
+                }
+
+                // Restore loyalty points if paid with loyalty points
+                if ($order->payment_type === 'loyalty_points' && $order->user_id) {
+                    $conversionRate = (float) (Setting::where('key', 'loyalty_conversion_rate')->value('value') ?? 1.0);
+                    $pointsToRestore = (int) ceil($order->final_amount / $conversionRate);
+                    User::where('id', $order->user_id)->increment('loyalty_points', $pointsToRestore);
+                }
+            }
+
+            // Send cancellation email
+            try {
+                Mail::to($order->customer_email)->send(new OrderCancelled($order->load('orderItems.menu')));
+            } catch (\Exception $e) {
+                Log::error('Failed to send cancellation email: ' . $e->getMessage());
+            }
+
+            return response()->json(['status' => true, 'message' => 'Order cancelled successfully.', 'order' => $order]);
+        }
 
         $updateData = ['status' => $validated['status']];
 
@@ -97,14 +156,30 @@ class OrderController extends Controller
         return response()->json($order->load('sentToKitchenBy'));
     }
 
+    private function applySearch($query, Request $request)
+    {
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('id', $search)
+                  ->orWhere('order_number', 'like', "%{$search}%")
+                  ->orWhere('customer_email', 'like', "%{$search}%")
+                  ->orWhere('customer_phone', 'like', "%{$search}%")
+                  ->orWhere('customer_name', 'like', "%{$search}%")
+                  ->orWhereHas('invoice', fn($q) => $q->where('invoice_number', 'like', "%{$search}%"));
+            });
+        }
+        return $query;
+    }
+
     private function awardLoyaltyPoints(Order $order): void
     {
         if (! $order->user_id || $order->points_earned) {
             return;
         }
 
-        $pointsPerOrder = (int) (\App\Models\Setting::where('key', 'loyalty_points_per_order')->value('value') ?? 10);
-        $customer = \App\Models\User::find($order->user_id);
+        $pointsPerOrder = (int) (Setting::where('key', 'loyalty_points_per_order')->value('value') ?? 10);
+        $customer = User::find($order->user_id);
         if ($customer) {
             $customer->increment('loyalty_points', $pointsPerOrder);
             $order->update(['points_earned' => $pointsPerOrder]);
@@ -135,6 +210,8 @@ class OrderController extends Controller
             }
         }
 
+        $this->applySearch($query, $request);
+
         return $query->latest()->paginate($request->get('per_page', 15));
     }
 
@@ -144,7 +221,7 @@ class OrderController extends Controller
             return $response;
         }
 
-        $agents = \App\Models\User::where('role', 'delivery_agent')
+        $agents = User::where('role', 'delivery_agent')
             ->select('id', 'name', 'email', 'phone')
             ->orderBy('name')
             ->get();
@@ -175,7 +252,7 @@ class OrderController extends Controller
             'delivery_agent_id' => 'required|exists:users,id',
         ]);
 
-        $agent = \App\Models\User::findOrFail($validated['delivery_agent_id']);
+        $agent = User::findOrFail($validated['delivery_agent_id']);
         if ($agent->role !== 'delivery_agent') {
             return response()->json(['message' => 'User is not a delivery agent'], 422);
         }
@@ -188,7 +265,7 @@ class OrderController extends Controller
         ]);
 
         if ($agent->email) {
-            Mail::to($agent->email)->send(new \App\Mail\OrderAssignedToAgent($order, $agent));
+            Mail::to($agent->email)->send(new OrderAssignedToAgent($order, $agent));
         }
 
         return response()->json($order->load(['orderItems.menu', 'orderItems.packaging', 'invoice', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor', 'deliveryZone.city.state']));
@@ -307,6 +384,8 @@ class OrderController extends Controller
             $query->where('status', $request->status);
         }
 
+        $this->applySearch($query, $request);
+
         return $query->latest()->paginate($request->get('per_page', 15));
     }
 
@@ -322,6 +401,8 @@ class OrderController extends Controller
         if ($request->has('status')) {
             $query->where('status', $request->status);
         }
+
+        $this->applySearch($query, $request);
 
         return $query->latest()->paginate($request->get('per_page', 15));
     }

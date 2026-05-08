@@ -21,14 +21,25 @@ class PaymentController extends Controller
 
         $perPage = $request->input('per_page', 15);
 
-        // Calculate totals
-        $totalRevenue = Invoice::where('payment_status', 'paid')->sum('amount');
-        $totalPending = Invoice::whereIn('payment_status', ['pending', 'unpaid'])->count();
-        $totalCompleted = Invoice::where('payment_status', 'paid')->count();
-        $totalTransactions = Invoice::count();
+        $invoiceQuery = Invoice::when($request->filled('search'), function ($query) use ($request) {
+                $query->whereHas('order', function ($q) use ($request) {
+                    $q->where('order_number', 'like', '%' . $request->search . '%')
+                      ->orWhere('customer_name', 'like', '%' . $request->search . '%')
+                      ->orWhere('customer_email', 'like', '%' . $request->search . '%')
+                      ->orWhere('customer_phone', 'like', '%' . $request->search . '%');
+                });
+            })
+            ->when($request->filled('payment_status'), fn($q) => $q->where('payment_status', $request->payment_status))
+            ->when($request->filled('payment_method'), fn($q) => $q->where('payment_method', $request->payment_method));
+
+        // Calculate totals on the full filtered dataset
+        $totalRevenue = (clone $invoiceQuery)->where('payment_status', 'paid')->sum('amount');
+        $totalPending = (clone $invoiceQuery)->whereIn('payment_status', ['pending', 'unpaid'])->count();
+        $totalCompleted = (clone $invoiceQuery)->where('payment_status', 'paid')->count();
+        $totalTransactions = (clone $invoiceQuery)->count();
 
         // Get paginated payments
-        $payments = Invoice::with(['order.user', 'order.attendant'])
+        $payments = $invoiceQuery->with(['order.user', 'order.attendant'])
             ->latest()
             ->paginate($perPage);
 
@@ -158,13 +169,13 @@ class PaymentController extends Controller
         $reference = $request->query('reference') ?: $request->query('trxref');
 
         if (!$reference) {
-            return redirect('https://eatwella.ng');
+            return redirect(env('FRONTEND_URL'));
         }
 
         $order = Order::whereRaw('UPPER(order_number) = ?', [strtoupper($reference)])->first();
 
         if (!$order) {
-            return redirect('https://eatwella.ng');
+            return redirect(env('FRONTEND_URL'));
         }
 
         // If still pending, verify with Paystack
@@ -181,7 +192,7 @@ class PaymentController extends Controller
             }
         }
 
-        return redirect('https://eatwella.ng/receipt/' . $order->id);
+        return redirect(env('FRONTEND_URL') . '/receipt/' . $order->id);
     }
 
     /**

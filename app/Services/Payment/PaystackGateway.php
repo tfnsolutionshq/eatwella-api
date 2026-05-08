@@ -20,10 +20,10 @@ class PaystackGateway implements PaymentGatewayInterface
     {
         // Initialize transaction and return authorization URL
         $payload = [
-            'email' => $email,
-            'amount' => (int) ($amount * 100),
-            'callback_url' => $data['callback_url'] ?? null,
-            'split_code' => env('PAYSTACK_SPLIT_CODE'),
+            'email'        => $email,
+            'amount'       => (int) ($amount * 100),
+            'callback_url' => $data['callback_url'] ?? env('PAYSTACK_CALLBACK_URL'),
+            'split_code'   => env('PAYSTACK_SPLIT_CODE'),
         ];
         if (!empty($data['reference'])) {
             $payload['reference'] = strtolower($data['reference']);

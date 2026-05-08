@@ -27,7 +27,7 @@ class CustomerController extends Controller
         return response()->json(['takeaway_price' => round($price, 2)]);
     }
 
-    private function checkAvailabilityHours(): void
+    private function checkAvailabilityHours(string $orderType = null): void
     {
         $hoursJson = \App\Models\Setting::where('key', 'availability_hours')->value('value');
         if (!$hoursJson) return;
@@ -41,7 +41,7 @@ class CustomerController extends Controller
 
         $entry = collect($hours)->firstWhere('day', $day);
 
-        if (!$entry || !($entry['enabled'] ?? false)) {
+        if (!$entry || !($entry['enabled'] ?? false) || empty($entry['open']) || empty($entry['close'])) {
             abort(403, 'Restaurant is currently closed.');
         }
 
@@ -50,6 +50,14 @@ class CustomerController extends Controller
 
         if ($now->lt($open) || $now->gt($close)) {
             abort(403, 'Restaurant is currently closed.');
+        }
+
+        if ($orderType) {
+            $orderTypes = $entry['order_types'] ?? [];
+            $enabled = $orderTypes[$orderType] ?? true;
+            if (! $enabled) {
+                abort(403, ucfirst($orderType) . ' orders are not available today.');
+            }
         }
     }
 
@@ -114,14 +122,14 @@ class CustomerController extends Controller
         $isStaff = $user && in_array(strtolower(trim($user->role)), ['attendant', 'admin', 'supervisor'], true);
 
         if (!$isStaff) {
-            $this->checkAvailabilityHours();
+            $this->checkAvailabilityHours($request->order_type);
         }
         if ($user) {
             $role = strtolower(trim($user->role));
-            if (! in_array($role, ['customer', 'attendant'], true)) {
-                return response()->json(['message' => 'Forbidden: Only customers and attendants can checkout. (Current role: ' . $user->role . ')'], 403);
+            if (! in_array($role, ['customer', 'attendant', 'admin'], true)) {
+                return response()->json(['message' => 'Forbidden: Only customers, attendants and admins can checkout. (Current role: ' . $user->role . ')'], 403);
             }
-            $isAttendant = $role === 'attendant';
+            $isAttendant = in_array($role, ['attendant', 'admin']);
             $isCustomer = $role === 'customer';
         } else {
             $isAttendant = false;
@@ -129,17 +137,22 @@ class CustomerController extends Controller
         }
 
         $rules = [
-            'order_type' => 'required|in:dine,pickup,delivery',
+            'order_type'   => 'required|in:dine,pickup,delivery',
             'payment_type' => 'required|in:cash,pos,transfer,gateway,loyalty_points',
-            'items' => 'nullable|array',
-            'items.*.menu_id' => 'required_with:items|exists:menus,id',
-            'items.*.quantity' => 'required_with:items|integer|min:1',
+            'items'        => 'nullable|array',
+            'items.*.menu_id'      => 'required_with:items|exists:menus,id',
+            'items.*.quantity'     => 'required_with:items|integer|min:1',
             'items.*.packaging_id' => 'nullable|exists:takeaway_packagings,id',
         ];
 
-        // Guest users must provide customer details
-        if (! $user || $isAttendant) {
-            $rules['customer_name'] = 'required|string|max:255';
+        // Staff can link order to an existing customer
+        if ($isAttendant) {
+            $rules['customer_user_id'] = 'nullable|exists:users,id';
+        }
+
+        // Guests must provide customer details
+        if (! $user && ! $isAttendant) {
+            $rules['customer_name']  = 'required|string|max:255';
             $rules['customer_email'] = 'required|email';
             $rules['customer_phone'] = 'required_if:order_type,delivery|nullable|string';
         }
@@ -333,10 +346,34 @@ class CustomerController extends Controller
             $finalAmount = $totalAmount - $discountAmount + $totalExclusiveTax + $deliveryFee + $takeawayAmount;
 
             // Get customer details
-            $customerName = $isCustomer ? $user->name : $validated['customer_name'];
-            $customerEmail = $isCustomer ? $user->email : $validated['customer_email'];
-            $customerPhone = $isCustomer ? $user->phone : ($validated['customer_phone'] ?? null);
-            $orderUserId = $isCustomer ? $user->id : null;
+            $defaultCustomer = \App\Models\User::where('email', 'eatwella@gmail.com')->first();
+
+            if ($isAttendant && ! empty($validated['customer_user_id'])) {
+                // Staff linked to an existing customer
+                $linkedCustomer = \App\Models\User::findOrFail($validated['customer_user_id']);
+                $customerName   = $linkedCustomer->name;
+                $customerEmail  = $linkedCustomer->email;
+                $customerPhone  = $linkedCustomer->phone;
+                $orderUserId    = $linkedCustomer->id;
+            } elseif ($isAttendant) {
+                // No customer provided — fall back to default platform customer
+                $customerName   = $defaultCustomer->name;
+                $customerEmail  = $defaultCustomer->email;
+                $customerPhone  = $defaultCustomer->phone;
+                $orderUserId    = $defaultCustomer->id;
+            } elseif ($isCustomer) {
+                $customerName   = $user->name;
+                $customerEmail  = $user->email;
+                $customerPhone  = $user->phone;
+                $orderUserId    = $user->id;
+            } else {
+                // Guest — uses provided details
+                $customerName   = $validated['customer_name'];
+                $customerEmail  = $validated['customer_email'];
+                $customerPhone  = $validated['customer_phone'] ?? null;
+                $orderUserId    = null;
+            }
+
             $attendantId = $isAttendant ? $user->id : null;
 
             // Generate order number upfront for all payment types
@@ -348,7 +385,7 @@ class CustomerController extends Controller
                 $paymentResult = $this->paymentGateway->charge(
                     $finalAmount,
                     $customerEmail,
-                    ['callback_url' => 'https://eatwella.tfnsolutions.us/api/payment/callback', 'reference' => $orderNumber]
+                    ['reference' => $orderNumber]
                 );
 
                 if ($paymentResult['status'] === 'failed') {

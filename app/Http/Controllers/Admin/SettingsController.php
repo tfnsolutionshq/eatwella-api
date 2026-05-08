@@ -43,11 +43,15 @@ class SettingsController extends Controller
         }
 
         $validated = $request->validate([
-            'availability_hours'                => 'required|array|size:7',
-            'availability_hours.*.day'          => 'required|string|in:Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday',
-            'availability_hours.*.enabled'      => 'required|boolean',
-            'availability_hours.*.open'         => 'nullable|required_if:availability_hours.*.enabled,true|string',
-            'availability_hours.*.close'        => 'nullable|required_if:availability_hours.*.enabled,true|string',
+            'availability_hours'                         => 'required|array|size:7',
+            'availability_hours.*.day'                   => 'required|string|in:Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday',
+            'availability_hours.*.enabled'               => 'required|boolean',
+            'availability_hours.*.open'                  => 'nullable|required_if:availability_hours.*.enabled,true|string',
+            'availability_hours.*.close'                 => 'nullable|required_if:availability_hours.*.enabled,true|string',
+            'availability_hours.*.order_types'           => 'nullable|array',
+            'availability_hours.*.order_types.dine'      => 'nullable|boolean',
+            'availability_hours.*.order_types.pickup'    => 'nullable|boolean',
+            'availability_hours.*.order_types.delivery'  => 'nullable|boolean',
         ]);
 
         Setting::updateOrCreate(

@@ -25,7 +25,7 @@ class AnalyticsController extends Controller
         $query = Order::whereBetween('created_at', [
             Carbon::parse($startDate)->startOfDay(),
             Carbon::parse($endDate)->endOfDay()
-        ])->where('status', '!=', 'cancelled'); // Assuming cancelled orders don't count? Or maybe 'completed'?
+        ])->whereNotIn('status', ['cancelled', 'pending']);
 
         $totalRevenue = $query->sum('final_amount');
         $totalOrders = $query->count();
@@ -69,7 +69,7 @@ class AnalyticsController extends Controller
                 $q->whereBetween('created_at', [
                     Carbon::parse($startDate)->startOfDay(),
                     Carbon::parse($endDate)->endOfDay()
-                ])->where('status', '!=', 'cancelled');
+                ])->whereNotIn('status', ['cancelled', 'pending']);
             })
             ->with('menu:id,name,price')
             ->groupBy('menu_id')
@@ -121,13 +121,10 @@ class AnalyticsController extends Controller
                 Carbon::parse($startDate)->startOfDay(),
                 Carbon::parse($endDate)->endOfDay()
             ])
-            ->where('status', '!=', 'cancelled')
-            ->groupBy(DB::raw('date')) // Use the alias 'date' for grouping if supported, otherwise repeat expression
+            ->whereNotIn('status', ['cancelled', 'pending'])
+            ->groupBy(DB::raw($groupByExpression))
             ->orderBy('date')
             ->get();
-
-        // If 'date' alias doesn't work in group by (standard SQL requires expression), we might need:
-        // ->groupBy(DB::raw($groupByExpression))
 
         return response()->json($dailySales);
     }
