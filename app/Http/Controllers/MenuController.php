@@ -158,11 +158,11 @@ class MenuController extends Controller
         ]);
 
         return response()->json([
-            'message'          => 'Stock updated successfully',
-            'menu_id'          => $menu->id,
-            'quantity_before'  => $before,
-            'quantity_added'   => $validated['quantity'],
-            'quantity_after'   => $after,
+            'message'         => 'Stock updated successfully',
+            'menu_id'         => $menu->id,
+            'quantity_before' => $before,
+            'quantity_added'  => $validated['quantity'],
+            'quantity_after'  => $after,
         ]);
     }
 

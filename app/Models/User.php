@@ -74,4 +74,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(Cart::class);
     }
+
+    public function bankDetails()
+    {
+        return $this->hasMany(\App\Models\DeliveryAgentBankDetail::class);
+    }
 }

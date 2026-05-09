@@ -37,7 +37,13 @@ class UserController extends Controller
             return $response;
         }
 
-        return $user->load(['addresses', 'orders.orderItems.menu']);
+        $relations = ['addresses', 'orders.orderItems.menu'];
+
+        if ($user->role === 'delivery_agent') {
+            $relations[] = 'bankDetails';
+        }
+
+        return $user->load($relations);
     }
 
     public function storeStaff(Request $request)

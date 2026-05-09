@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\DeliveryAgentController;
 use App\Http\Controllers\AddressController;
 use App\Http\Controllers\Admin\DeleteController;
 use App\Http\Controllers\Admin\AnalyticsController;
@@ -183,6 +184,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/delivery-agent/orders', [OrderController::class, 'deliveryAgentOrders']);
     Route::get('/delivery-agent/orders/{order}', [OrderController::class, 'deliveryAgentShow']);
     Route::post('/delivery-agent/orders/{order}/complete', [OrderController::class, 'completeDelivery']);
+
+    // Delivery Agent Bank Details
+    Route::get('/delivery-agent/bank-details', [DeliveryAgentController::class, 'getBankDetails']);
+    Route::post('/delivery-agent/bank-details', [DeliveryAgentController::class, 'storeBankDetail']);
+    Route::put('/delivery-agent/bank-details/{bankDetail}', [DeliveryAgentController::class, 'updateBankDetail']);
+    Route::delete('/delivery-agent/bank-details/{bankDetail}', [DeliveryAgentController::class, 'deleteBankDetail']);
+
+    // Admin: Orders delivered by a rider
+    Route::get('/admin/riders/{user}/orders', [DeliveryAgentController::class, 'riderOrders']);
 
     // Kitchen Routes
     Route::get('/kitchen/orders/confirmed', [KitchenController::class, 'getConfirmedOrders']);
