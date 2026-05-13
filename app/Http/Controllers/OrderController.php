@@ -50,7 +50,7 @@ class OrderController extends Controller
         $user = $request->user();
 
         // Attendant can only update their own orders or unassigned orders; other attendants and supervisor can update for them
-        // Actually, since we want attendants to be able to confirm cash orders placed by customers online, 
+        // Actually, since we want attendants to be able to confirm cash orders placed by customers online,
         // we shouldn't restrict them to only orders they created.
         // We'll remove this restriction so they can process any order.
 
@@ -320,9 +320,45 @@ class OrderController extends Controller
         return response()->json($order->load(['orderItems.menu', 'orderItems.packaging', 'invoice', 'deliveryAgent', 'assignedBySupervisor', 'completedBy']));
     }
 
+    public function adminCompleteDelivery(Request $request, Order $order)
+    {
+        if ($response = $this->requireRole($request, ['admin'])) {
+            return $response;
+        }
+
+        if ($order->order_type !== 'delivery') {
+            return response()->json(['message' => 'Only delivery orders can be completed here'], 422);
+        }
+
+        if ($order->status === 'completed') {
+            return response()->json(['message' => 'Order already completed'], 422);
+        }
+
+        $request->validate([
+            'delivery_pin' => 'required|string|size:6',
+            'note'         => 'nullable|string|max:500',
+        ]);
+
+        if ($order->delivery_pin !== $request->delivery_pin) {
+            return response()->json(['message' => 'Invalid delivery PIN'], 400);
+        }
+
+        $order->update([
+            'status'          => 'completed',
+            'delivery_note'   => $request->note,
+            'completed_by_id' => $request->user()->id,
+            'completed_at'    => now(),
+            'expires_at'      => null,
+        ]);
+
+        $this->awardLoyaltyPoints($order);
+
+        return response()->json($order->load(['orderItems.menu', 'orderItems.packaging', 'invoice', 'deliveryAgent', 'assignedBySupervisor', 'completedBy']));
+    }
+
     public function supervisorCompleteDelivery(Request $request, Order $order)
     {
-        if ($response = $this->requireRole($request, ['supervisor'])) {
+        if ($response = $this->requireRole($request, ['supervisor', 'admin'])) {
             return $response;
         }
 

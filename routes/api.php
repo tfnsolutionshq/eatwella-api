@@ -171,6 +171,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/orders/attendant', [OrderController::class, 'attendantCreatedOrders']);
     Route::get('/admin/orders/{order}', [OrderController::class, 'show']);
     Route::put('/admin/orders/{order}', [OrderController::class, 'update']);
+    Route::post('/admin/orders/{order}/complete-delivery', [OrderController::class, 'adminCompleteDelivery']);
     Route::get('/attendant/orders', [OrderController::class, 'attendantOrders']);
     Route::get('/attendant/orders/{order}', [OrderController::class, 'show']);
 
