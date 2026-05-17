@@ -9,8 +9,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            if (!Schema::hasColumn('users', 'role')) {
-                $table->enum('role', ['admin', 'cashier', 'customer'])->default('customer')->after('password');
+            if (!Schema::hasColumn('users', 'birth_month')) {
+                $table->tinyInteger('birth_month')->unsigned()->nullable()->after('birthday');
             }
         });
     }
@@ -18,7 +18,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn('role');
+            $table->dropColumn('birth_month');
         });
     }
 };

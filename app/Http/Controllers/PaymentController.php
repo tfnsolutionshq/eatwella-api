@@ -169,13 +169,13 @@ class PaymentController extends Controller
         $reference = $request->query('reference') ?: $request->query('trxref');
 
         if (!$reference) {
-            return redirect(env('FRONTEND_URL'));
+            return redirect(config('services.frontend_url'));
         }
 
         $order = Order::whereRaw('UPPER(order_number) = ?', [strtoupper($reference)])->first();
 
         if (!$order) {
-            return redirect(env('FRONTEND_URL'));
+            return redirect(config('services.frontend_url'));
         }
 
         // If still pending, verify with Paystack
@@ -192,7 +192,7 @@ class PaymentController extends Controller
             }
         }
 
-        return redirect(env('FRONTEND_URL') . '/receipt/' . $order->id);
+        return redirect(config('services.frontend_url') . '/receipt/' . $order->id);
     }
 
     /**

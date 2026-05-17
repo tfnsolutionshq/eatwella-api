@@ -4,7 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\Order;
+use App\Services\NewUserDiscountService;
+use App\Mail\WelcomeEmail;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
@@ -13,20 +16,25 @@ class CustomerAuthController extends Controller
     public function register(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:6',
             'phone' => 'nullable|string|max:20',
-            'zone_id' => 'required|exists:zones,id',
-            'street_address' => 'required|string',
+            'zone_id' => 'nullable|exists:zones,id',
+            'street_address' => 'nullable|string',
             'closest_landmark' => 'nullable|string',
+            'birth_month' => 'nullable|integer|min:1|max:12',
+            'birthday' => 'nullable|date',
         ]);
 
         $user = User::create([
-            'name' => $validated['name'],
+            'name' => trim($validated['first_name'] . ' ' . $validated['last_name']),
             'email' => $validated['email'],
             'password' => $validated['password'],
             'phone' => $validated['phone'] ?? null,
+            'birth_month' => $validated['birth_month'] ?? null,
+            'birthday' => $validated['birthday'] ?? null,
             'role' => 'customer',
         ]);
 
@@ -37,6 +45,10 @@ class CustomerAuthController extends Controller
         ]);
 
         $token = $user->createToken('customer-token')->plainTextToken;
+
+        [$menuDiscount, $freeDeliveryDiscount] = (new NewUserDiscountService)->createForUser($user);
+
+        Mail::to($user->email)->queue(new WelcomeEmail($user, $menuDiscount, $freeDeliveryDiscount));
 
         return response()->json([
             'message' => 'Account created successfully',
@@ -87,12 +99,23 @@ class CustomerAuthController extends Controller
             return $response;
         }
         $validated = $request->validate([
-            'name' => 'nullable|string|max:255',
+            'first_name' => 'nullable|string|max:255',
+            'last_name' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:20',
+            'birth_month' => 'nullable|integer|min:1|max:12',
             'birthday' => 'nullable|date',
         ]);
 
-        $request->user()->update($validated);
+        $data = array_filter([
+            'name' => isset($validated['first_name']) || isset($validated['last_name'])
+                ? trim(($validated['first_name'] ?? $request->user()->first_name) . ' ' . ($validated['last_name'] ?? $request->user()->last_name))
+                : null,
+            'phone' => $validated['phone'] ?? null,
+            'birth_month' => $validated['birth_month'] ?? null,
+            'birthday' => $validated['birthday'] ?? null,
+        ], fn($v) => !is_null($v));
+
+        $request->user()->update($data);
 
         return response()->json([
             'message' => 'Profile updated successfully',

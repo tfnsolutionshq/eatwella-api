@@ -12,13 +12,27 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('orders', function (Blueprint $table) {
-            $table->enum('order_type', ['dine', 'pickup', 'delivery'])->after('order_number');
-            $table->string('customer_name')->after('customer_email');
-            $table->string('customer_phone')->nullable()->after('customer_name');
-            $table->string('table_number')->nullable()->after('customer_phone');
-            $table->text('delivery_address')->nullable()->after('table_number');
-            $table->string('delivery_city')->nullable()->after('delivery_address');
-            $table->string('delivery_zip')->nullable()->after('delivery_city');
+            if (!Schema::hasColumn('orders', 'order_type')) {
+                $table->enum('order_type', ['dine', 'pickup', 'delivery'])->after('order_number');
+            }
+            if (!Schema::hasColumn('orders', 'customer_name')) {
+                $table->string('customer_name')->after('customer_email');
+            }
+            if (!Schema::hasColumn('orders', 'customer_phone')) {
+                $table->string('customer_phone')->nullable()->after('customer_name');
+            }
+            if (!Schema::hasColumn('orders', 'table_number')) {
+                $table->string('table_number')->nullable()->after('customer_phone');
+            }
+            if (!Schema::hasColumn('orders', 'delivery_address')) {
+                $table->text('delivery_address')->nullable()->after('table_number');
+            }
+            if (!Schema::hasColumn('orders', 'delivery_city')) {
+                $table->string('delivery_city')->nullable()->after('delivery_address');
+            }
+            if (!Schema::hasColumn('orders', 'delivery_zip')) {
+                $table->string('delivery_zip')->nullable()->after('delivery_city');
+            }
         });
     }
 
@@ -32,3 +46,6 @@ return new class extends Migration
         });
     }
 };
+
+
+

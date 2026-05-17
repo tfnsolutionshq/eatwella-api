@@ -26,3 +26,6 @@ return new class extends Migration
         DB::statement("ALTER TABLE orders MODIFY COLUMN status ENUM('pending', 'processing', 'confirmed', 'completed', 'cancelled') DEFAULT 'pending'");
     }
 };
+
+
+

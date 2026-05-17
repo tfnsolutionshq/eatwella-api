@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('career_openings', function (Blueprint $table) {
-            $table->string('image_path')->nullable()->after('requirements');
+            if (!Schema::hasColumn('career_openings', 'image_path')) {
+                $table->string('image_path')->nullable()->after('requirements');
+            }
         });
     }
 
@@ -26,3 +28,6 @@ return new class extends Migration
         });
     }
 };
+
+
+

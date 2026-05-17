@@ -9,8 +9,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('orders', function (Blueprint $table) {
-            $table->string('delivery_proof_image')->nullable()->after('assigned_at');
-            $table->text('delivery_note')->nullable()->after('delivery_proof_image');
+            if (!Schema::hasColumn('orders', 'delivery_proof_image')) {
+                $table->string('delivery_proof_image')->nullable()->after('assigned_at');
+            }
+            if (!Schema::hasColumn('orders', 'delivery_note')) {
+                $table->text('delivery_note')->nullable()->after('delivery_proof_image');
+            }
         });
     }
 
@@ -21,3 +25,6 @@ return new class extends Migration
         });
     }
 };
+
+
+

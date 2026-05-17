@@ -11,6 +11,7 @@ class Kernel extends ConsoleKernel
     {
         $schedule->job(\App\Jobs\CancelExpiredOrders::class)->everyMinute();
         $schedule->command('queue:work --stop-when-empty')->everyMinute();
+        $schedule->command('birthday:send')->dailyAt('08:00');
     }
 
     protected function commands(): void

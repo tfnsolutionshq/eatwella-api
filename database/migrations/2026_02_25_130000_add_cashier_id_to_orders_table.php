@@ -8,9 +8,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('orders', function (Blueprint $table) {
-            $table->foreignUuid('cashier_id')->nullable()->after('user_id')->constrained('users')->nullOnDelete();
-        });
+        if (!Schema::hasColumn('orders', 'cashier_id')) {
+            Schema::table('orders', function (Blueprint $table) {
+                $table->foreignUuid('cashier_id')->nullable()->after('user_id')->constrained('users')->nullOnDelete();
+            });
+        }
     }
 
     public function down(): void
@@ -21,3 +23,6 @@ return new class extends Migration
         });
     }
 };
+
+
+

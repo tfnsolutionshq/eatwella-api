@@ -12,8 +12,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('orders', function (Blueprint $table) {
-            $table->decimal('tax_amount', 10, 2)->default(0)->after('discount_amount');
-            $table->json('tax_details')->nullable()->after('tax_amount');
+            if (!Schema::hasColumn('orders', 'tax_amount')) {
+                $table->decimal('tax_amount', 10, 2)->default(0)->after('discount_amount');
+            }
+            if (!Schema::hasColumn('orders', 'tax_details')) {
+                $table->json('tax_details')->nullable()->after('tax_amount');
+            }
         });
     }
 
@@ -27,3 +31,6 @@ return new class extends Migration
         });
     }
 };
+
+
+

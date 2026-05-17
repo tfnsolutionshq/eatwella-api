@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('carts', function (Blueprint $table) {
+        Schema::createIfNotExists('carts', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->string('session_id')->unique(); // The guest's identifier
             $table->timestamps();
@@ -26,3 +26,6 @@ return new class extends Migration
         Schema::dropIfExists('carts');
     }
 };
+
+
+

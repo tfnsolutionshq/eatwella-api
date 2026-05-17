@@ -12,9 +12,15 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('discounts', function (Blueprint $table) {
-            $table->string('code')->unique()->after('name');
-            $table->integer('usage_limit')->nullable()->after('is_active');
-            $table->integer('used_count')->default(0)->after('usage_limit');
+            if (!Schema::hasColumn('discounts', 'code')) {
+                $table->string('code')->unique()->after('name');
+            }
+            if (!Schema::hasColumn('discounts', 'usage_limit')) {
+                $table->integer('usage_limit')->nullable()->after('is_active');
+            }
+            if (!Schema::hasColumn('discounts', 'used_count')) {
+                $table->integer('used_count')->default(0)->after('usage_limit');
+            }
         });
     }
 
@@ -28,3 +34,6 @@ return new class extends Migration
         });
     }
 };
+
+
+

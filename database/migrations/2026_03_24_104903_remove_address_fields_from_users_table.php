@@ -12,7 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn(['street_address', 'state', 'closest_landmark', 'postal_code']);
+            $columns = ['street_address', 'state', 'closest_landmark', 'postal_code'];
+            $table->dropColumn(array_filter($columns, fn($col) => Schema::hasColumn('users', $col)));
         });
     }
 
@@ -29,3 +30,6 @@ return new class extends Migration
         });
     }
 };
+
+
+

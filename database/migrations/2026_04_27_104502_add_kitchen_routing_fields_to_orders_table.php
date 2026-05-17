@@ -12,9 +12,11 @@ return new class extends Migration
         DB::statement("ALTER TABLE orders MODIFY COLUMN status ENUM('pending','processing','confirmed','in_kitchen','ready','dispatched','completed','cancelled') DEFAULT 'pending'");
 
         Schema::table('orders', function (Blueprint $table) {
-            $table->string('sent_to_kitchen_by_id')->nullable()->after('completed_by_id');
-            $table->timestamp('sent_to_kitchen_at')->nullable()->after('sent_to_kitchen_by_id');
-            $table->foreign('sent_to_kitchen_by_id')->references('id')->on('users')->nullOnDelete();
+            if (!Schema::hasColumn('orders', 'sent_to_kitchen_by_id')) {
+                $table->string('sent_to_kitchen_by_id')->nullable()->after('completed_by_id');
+                $table->timestamp('sent_to_kitchen_at')->nullable()->after('sent_to_kitchen_by_id');
+                $table->foreign('sent_to_kitchen_by_id')->references('id')->on('users')->nullOnDelete();
+            }
         });
     }
 
@@ -28,3 +30,6 @@ return new class extends Migration
         DB::statement("ALTER TABLE orders MODIFY COLUMN status ENUM('pending','processing','confirmed','ready','dispatched','completed','cancelled') DEFAULT 'pending'");
     }
 };
+
+
+

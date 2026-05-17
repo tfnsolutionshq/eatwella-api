@@ -15,7 +15,9 @@ return new class extends Migration
 
         Schema::table('addresses', function (Blueprint $table) {
             $table->dropColumn(['state', 'postal_code']);
-            $table->foreignId('zone_id')->after('street_address')->constrained('zones')->restrictOnDelete();
+            if (!Schema::hasColumn('addresses', 'zone_id')) {
+                $table->foreignId('zone_id')->after('street_address')->constrained('zones')->restrictOnDelete();
+            }
         });
     }
 
@@ -29,3 +31,6 @@ return new class extends Migration
         });
     }
 };
+
+
+

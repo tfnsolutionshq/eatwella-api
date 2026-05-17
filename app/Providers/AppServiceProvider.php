@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Database\Schema\Builder;
+use Illuminate\Support\Facades\Schema;
 
 use App\Interfaces\PaymentGatewayInterface;
 use App\Services\Payment\PaystackGateway;
@@ -26,6 +28,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        Builder::macro('createIfNotExists', function (string $table, \Closure $callback) {
+            if (!Schema::hasTable($table)) {
+                Schema::create($table, $callback);
+            }
+        });
     }
 }

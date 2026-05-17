@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasColumn('orders', 'delivery_pin')) {
+            return;
+        }
+
         Schema::table('orders', function (Blueprint $table) {
             $table->string('delivery_pin', 6)->nullable()->after('status');
         });
@@ -26,3 +30,6 @@ return new class extends Migration
         });
     }
 };
+
+
+

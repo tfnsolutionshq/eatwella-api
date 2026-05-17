@@ -11,13 +11,17 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('orders', function (Blueprint $table) {
-            $table->foreignUuid('user_id')->nullable()->after('id')->constrained()->onDelete('set null');
-        });
+        if (!Schema::hasColumn('orders', 'user_id')) {
+            Schema::table('orders', function (Blueprint $table) {
+                $table->foreignUuid('user_id')->nullable()->after('id')->constrained()->onDelete('set null');
+            });
+        }
 
-        Schema::table('carts', function (Blueprint $table) {
-            $table->foreignUuid('user_id')->nullable()->after('id')->constrained()->onDelete('cascade');
-        });
+        if (!Schema::hasColumn('carts', 'user_id')) {
+            Schema::table('carts', function (Blueprint $table) {
+                $table->foreignUuid('user_id')->nullable()->after('id')->constrained()->onDelete('cascade');
+            });
+        }
     }
 
     /**
@@ -36,3 +40,6 @@ return new class extends Migration
         });
     }
 };
+
+
+

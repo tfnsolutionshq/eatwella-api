@@ -12,6 +12,7 @@ class Discount extends Model
     protected $fillable = [
         'name',
         'code',
+        'discount_type',
         'type',
         'value',
         'start_date',
@@ -19,7 +20,7 @@ class Discount extends Model
         'is_indefinite',
         'is_active',
         'usage_limit',
-        'used_count'
+        'used_count',
     ];
 
     protected $casts = [
@@ -51,4 +52,17 @@ class Discount extends Model
         return min($this->value, $amount);
     }
 
+    // null = all users, otherwise specific users via pivot
+    public function users()
+    {
+        return $this->belongsToMany(\App\Models\User::class, 'discount_user');
+    }
+
+    public function isForUser(?\App\Models\User $user): bool
+    {
+        if ($this->users()->exists()) {
+            return $user && $this->users()->where('user_id', $user->id)->exists();
+        }
+        return true; // no users attached = applies to all
+    }
 }

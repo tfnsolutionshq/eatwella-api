@@ -9,7 +9,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('menus', function (Blueprint $table) {
-            $table->unsignedInteger('stock_quantity')->default(0)->after('is_available');
+            if (!Schema::hasColumn('menus', 'stock_quantity')) {
+                $table->unsignedInteger('stock_quantity')->default(0)->after('is_available');
+            }
         });
     }
 
@@ -20,3 +22,6 @@ return new class extends Migration
         });
     }
 };
+
+
+

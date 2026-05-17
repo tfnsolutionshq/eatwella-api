@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('settings', function (Blueprint $table) {
+        Schema::createIfNotExists('settings', function (Blueprint $table) {
             $table->id();
             $table->string('key')->unique();
             $table->text('value')->nullable();
@@ -28,3 +28,6 @@ return new class extends Migration
         Schema::dropIfExists('settings');
     }
 };
+
+
+

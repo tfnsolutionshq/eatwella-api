@@ -36,5 +36,30 @@ class SettingsSeeder extends Seeder
             ['key' => 'restaurant_timezone'],
             ['value' => 'Africa/Lagos', 'description' => 'Timezone of the restaurant location']
         );
+
+        Setting::firstOrCreate(
+            ['key' => 'birthday_discount_percentage'],
+            ['value' => '10', 'description' => 'Discount percentage sent to customers on their birthday']
+        );
+
+        Setting::firstOrCreate(
+            ['key' => 'birthday_discount_type'],
+            ['value' => 'menu', 'description' => 'Birthday discount type: menu, free_delivery, or both']
+        );
+
+        Setting::firstOrCreate(
+            ['key' => 'birthday_free_delivery'],
+            ['value' => '0', 'description' => 'Whether birthday customers get free delivery (1 = yes, 0 = no)']
+        );
+
+        Setting::firstOrCreate(
+            ['key' => 'new_user_discount_type'],
+            ['value' => 'none', 'description' => 'New user first order discount type: none, menu, free_delivery, or both']
+        );
+
+        Setting::firstOrCreate(
+            ['key' => 'new_user_discount_percentage'],
+            ['value' => '0', 'description' => 'Discount percentage for new user first order (used when type is menu or both)']
+        );
     }
 }

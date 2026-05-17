@@ -9,7 +9,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('campaigns', function (Blueprint $table) {
-            $table->string('brief')->nullable()->after('title');
+            if (!Schema::hasColumn('campaigns', 'brief')) {
+                $table->string('brief')->nullable()->after('title');
+            }
         });
     }
 
@@ -20,3 +22,6 @@ return new class extends Migration
         });
     }
 };
+
+
+

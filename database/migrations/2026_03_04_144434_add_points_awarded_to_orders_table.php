@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('orders', function (Blueprint $table) {
-            $table->boolean('points_awarded')->default(false)->after('status');
+            if (!Schema::hasColumn('orders', 'points_awarded')) {
+                $table->boolean('points_awarded')->default(false)->after('status');
+            }
         });
     }
 
@@ -26,3 +28,6 @@ return new class extends Migration
         });
     }
 };
+
+
+

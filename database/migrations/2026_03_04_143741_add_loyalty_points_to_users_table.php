@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->integer('loyalty_points')->default(0)->after('password');
+            if (!Schema::hasColumn('users', 'loyalty_points')) {
+                $table->integer('loyalty_points')->default(0)->after('password');
+            }
         });
     }
 
@@ -26,3 +28,6 @@ return new class extends Migration
         });
     }
 };
+
+
+

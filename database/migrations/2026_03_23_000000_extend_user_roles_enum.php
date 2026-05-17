@@ -15,3 +15,6 @@ return new class extends Migration
         DB::statement("ALTER TABLE users MODIFY COLUMN role ENUM('admin', 'cashier', 'customer') DEFAULT 'customer'");
     }
 };
+
+
+

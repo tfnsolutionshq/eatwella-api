@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('menu_recommendations', function (Blueprint $table) {
+        Schema::createIfNotExists('menu_recommendations', function (Blueprint $table) {
             $table->id();
             $table->foreignUuid('menu_id')->constrained('menus')->cascadeOnDelete();
             $table->foreignUuid('recommended_menu_id')->constrained('menus')->cascadeOnDelete();
@@ -31,3 +31,6 @@ return new class extends Migration
         Schema::dropIfExists('menu_recommendations');
     }
 };
+
+
+

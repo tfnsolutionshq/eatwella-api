@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('discounts', function (Blueprint $table) {
+        Schema::createIfNotExists('discounts', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->string('name');
             $table->enum('type', ['percentage', 'fixed']);
@@ -32,3 +32,6 @@ return new class extends Migration
         Schema::dropIfExists('discounts');
     }
 };
+
+
+

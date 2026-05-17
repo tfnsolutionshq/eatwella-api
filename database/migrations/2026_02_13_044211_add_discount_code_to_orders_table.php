@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('orders', function (Blueprint $table) {
-            $table->string('discount_code')->nullable()->after('discount_amount');
+            if (!Schema::hasColumn('orders', 'discount_code')) {
+                $table->string('discount_code')->nullable()->after('discount_amount');
+            }
         });
     }
 
@@ -26,3 +28,6 @@ return new class extends Migration
         });
     }
 };
+
+
+

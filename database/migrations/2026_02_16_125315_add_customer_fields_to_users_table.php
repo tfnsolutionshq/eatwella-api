@@ -12,12 +12,24 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->string('phone')->nullable();
-            $table->date('birthday')->nullable();
-            $table->string('street_address')->nullable();
-            $table->string('state')->nullable();
-            $table->string('closest_landmark')->nullable();
-            $table->string('postal_code')->nullable();
+            if (!Schema::hasColumn('users', 'phone')) {
+                $table->string('phone')->nullable();
+            }
+            if (!Schema::hasColumn('users', 'birthday')) {
+                $table->date('birthday')->nullable();
+            }
+            if (!Schema::hasColumn('users', 'street_address')) {
+                $table->string('street_address')->nullable();
+            }
+            if (!Schema::hasColumn('users', 'state')) {
+                $table->string('state')->nullable();
+            }
+            if (!Schema::hasColumn('users', 'closest_landmark')) {
+                $table->string('closest_landmark')->nullable();
+            }
+            if (!Schema::hasColumn('users', 'postal_code')) {
+                $table->string('postal_code')->nullable();
+            }
         });
     }
 
@@ -31,3 +43,6 @@ return new class extends Migration
         });
     }
 };
+
+
+

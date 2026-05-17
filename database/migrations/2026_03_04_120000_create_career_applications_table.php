@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('career_applications', function (Blueprint $table) {
+        Schema::createIfNotExists('career_applications', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->string('full_name');
             $table->string('email')->index();
@@ -29,3 +29,6 @@ return new class extends Migration
         Schema::dropIfExists('career_applications');
     }
 };
+
+
+

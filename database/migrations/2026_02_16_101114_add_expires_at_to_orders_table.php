@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('orders', function (Blueprint $table) {
-            $table->timestamp('expires_at')->nullable()->after('status');
+            if (!Schema::hasColumn('orders', 'expires_at')) {
+                $table->timestamp('expires_at')->nullable()->after('status');
+            }
         });
     }
 
@@ -26,3 +28,6 @@ return new class extends Migration
         });
     }
 };
+
+
+

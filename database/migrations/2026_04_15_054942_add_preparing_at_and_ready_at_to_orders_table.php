@@ -9,8 +9,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('orders', function (Blueprint $table) {
-            $table->timestamp('preparing_at')->nullable()->after('completed_at');
-            $table->timestamp('ready_at')->nullable()->after('preparing_at');
+            if (!Schema::hasColumn('orders', 'preparing_at')) {
+                $table->timestamp('preparing_at')->nullable()->after('completed_at');
+            }
+            if (!Schema::hasColumn('orders', 'ready_at')) {
+                $table->timestamp('ready_at')->nullable()->after('preparing_at');
+            }
         });
     }
 
@@ -21,3 +25,6 @@ return new class extends Migration
         });
     }
 };
+
+
+

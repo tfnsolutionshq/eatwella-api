@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('inventory_logs', function (Blueprint $table) {
+        Schema::createIfNotExists('inventory_logs', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('menu_id')->constrained()->cascadeOnDelete();
             $table->foreignUuid('user_id')->nullable()->constrained()->nullOnDelete();
@@ -26,3 +26,6 @@ return new class extends Migration
         Schema::dropIfExists('inventory_logs');
     }
 };
+
+
+

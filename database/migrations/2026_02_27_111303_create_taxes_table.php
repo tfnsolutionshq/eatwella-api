@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('taxes', function (Blueprint $table) {
+        Schema::createIfNotExists('taxes', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->string('name');
             $table->string('type')->default('VAT');
@@ -24,7 +24,7 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        Schema::create('category_tax', function (Blueprint $table) {
+        Schema::createIfNotExists('category_tax', function (Blueprint $table) {
             $table->id();
             $table->foreignUuid('tax_id')->constrained()->cascadeOnDelete();
             $table->foreignUuid('category_id')->constrained()->cascadeOnDelete();
@@ -41,3 +41,6 @@ return new class extends Migration
         Schema::dropIfExists('taxes');
     }
 };
+
+
+

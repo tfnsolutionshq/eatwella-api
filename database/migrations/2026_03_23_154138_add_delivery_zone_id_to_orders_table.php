@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('orders', function (Blueprint $table) {
-            $table->foreignId('delivery_zone_id')->nullable()->after('delivery_zip')->constrained('zones')->nullOnDelete();
+            if (!Schema::hasColumn('orders', 'delivery_zone_id')) {
+                $table->foreignId('delivery_zone_id')->nullable()->after('delivery_zip')->constrained('zones')->nullOnDelete();
+            }
         });
     }
 
@@ -27,3 +29,6 @@ return new class extends Migration
         });
     }
 };
+
+
+

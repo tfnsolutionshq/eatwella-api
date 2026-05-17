@@ -12,10 +12,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('career_applications', function (Blueprint $table) {
-            $table->foreignUuid('career_opening_id')
-                ->after('id')
-                ->constrained('career_openings')
-                ->cascadeOnDelete();
+            if (!Schema::hasColumn('career_applications', 'career_opening_id')) {
+                $table->foreignUuid('career_opening_id')
+                    ->after('id')
+                    ->constrained('career_openings')
+                    ->cascadeOnDelete();
+            }
         });
     }
 
@@ -30,3 +32,6 @@ return new class extends Migration
         });
     }
 };
+
+
+

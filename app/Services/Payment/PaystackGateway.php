@@ -18,15 +18,21 @@ class PaystackGateway implements PaymentGatewayInterface
 
     public function charge(float $amount, string $email, array $data): array
     {
-        // Initialize transaction and return authorization URL
         $payload = [
             'email'        => $email,
             'amount'       => (int) ($amount * 100),
-            'callback_url' => $data['callback_url'] ?? env('PAYSTACK_CALLBACK_URL'),
-            'split_code'   => env('PAYSTACK_SPLIT_CODE'),
+            'callback_url' => $data['callback_url'] ?? config('services.paystack.callback_url'),
         ];
+
         if (!empty($data['reference'])) {
             $payload['reference'] = strtolower($data['reference']);
+        }
+
+        if (app()->isProduction()) {
+            $splitCode = config('services.paystack.split_code');
+            if ($splitCode) {
+                $payload['split_code'] = $splitCode;
+            }
         }
         $response = Http::withToken($this->secretKey)
             ->post('https://api.paystack.co/transaction/initialize', $payload);

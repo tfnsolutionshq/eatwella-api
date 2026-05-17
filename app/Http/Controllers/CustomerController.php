@@ -261,19 +261,52 @@ class CustomerController extends Controller
             }
             $takeawayAmount = round($takeawayAmount, 2);
 
-            // Apply Discount from Cart
+            // Apply menu discount from cart code
             $discountAmount = 0;
             $discountCode = null;
+            $freeDeliveryAmount = 0;
+            $freeDeliveryDiscount = null;
 
             if ($cart && $cart->discount_code) {
-                $discount = \App\Models\Discount::where('code', $cart->discount_code)->first();
+                $menuDiscount = \App\Models\Discount::where('code', $cart->discount_code)
+                    ->where('discount_type', 'menu')
+                    ->first();
 
-                if ($discount && $discount->isValid()) {
-                    $discountAmount = $discount->calculateDiscount($totalAmount);
-                    $discountCode = $discount->code;
+                if ($menuDiscount && $menuDiscount->isValid()) {
+                    if ($menuDiscount->isForUser($user)) {
+                        $discountAmount = $menuDiscount->calculateDiscount($totalAmount);
+                        $discountCode = $menuDiscount->code;
+                        $menuDiscount->increment('used_count');
+                    }
+                }
+            }
 
-                    // Increment usage count
-                    $discount->increment('used_count');
+            // Auto-apply free_delivery discount for delivery orders
+            if ($validated['order_type'] === 'delivery') {
+                $freeDeliveryQuery = \App\Models\Discount::where('discount_type', 'free_delivery')
+                    ->where('is_active', true)
+                    ->where('start_date', '<=', now())
+                    ->where(function ($q) {
+                        $q->where('is_indefinite', true)
+                          ->orWhere(function ($q2) {
+                              $q2->where('is_indefinite', false)
+                                 ->where('end_date', '>=', now());
+                          });
+                    })
+                    ->where(function ($q) use ($user) {
+                        // applies to all (no users in pivot) OR specifically to this user
+                        $q->whereDoesntHave('users')
+                          ->orWhereHas('users', fn($q2) => $q2->where('users.id', optional($user)->id));
+                    })
+                    ->where(function ($q) {
+                        $q->whereNull('usage_limit')
+                          ->orWhereColumn('used_count', '<', 'usage_limit');
+                    })
+                    ->orderByRaw('(SELECT COUNT(*) FROM discount_user WHERE discount_user.discount_id = discounts.id) = 0 ASC') // user-specific first
+                    ->first();
+
+                if ($freeDeliveryDiscount = $freeDeliveryQuery) {
+                    // actual fee zeroing happens after zone fee is calculated below
                 }
             }
 
@@ -339,8 +372,16 @@ class CustomerController extends Controller
                     throw new \Exception("Delivery is not currently available in the selected zone: {$zone->name}.");
                 }
 
-                $deliveryFee = round((float) $zone->delivery_fee, 2);
+                $actualDeliveryFee = round((float) $zone->delivery_fee, 2);
                 $deliveryZoneId = $zone->id;
+
+                if ($freeDeliveryDiscount) {
+                    $freeDeliveryAmount = $actualDeliveryFee;
+                    $deliveryFee = 0;
+                    $freeDeliveryDiscount->increment('used_count');
+                } else {
+                    $deliveryFee = $actualDeliveryFee;
+                }
             }
 
             $finalAmount = $totalAmount - $discountAmount + $totalExclusiveTax + $deliveryFee + $takeawayAmount;
@@ -462,6 +503,7 @@ class CustomerController extends Controller
                 'discount_amount' => $discountAmount,
                 'tax_amount' => $totalTaxAmount,
                 'delivery_fee'    => $deliveryFee,
+                'free_delivery_amount' => $freeDeliveryAmount,
                 'takeaway_amount'  => $takeawayAmount,
                 'tax_details'      => $taxDetails,
                 'discount_code' => $discountCode,

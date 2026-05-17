@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('zones', function (Blueprint $table) {
-            $table->dropColumn('requires_specific_address');
+            if (Schema::hasColumn('zones', 'requires_specific_address')) {
+                $table->dropColumn('requires_specific_address');
+            }
         });
     }
 
@@ -26,3 +28,6 @@ return new class extends Migration
         });
     }
 };
+
+
+

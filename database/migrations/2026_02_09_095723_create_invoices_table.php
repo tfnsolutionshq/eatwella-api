@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('invoices', function (Blueprint $table) {
+        Schema::createIfNotExists('invoices', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('order_id')->constrained()->cascadeOnDelete();
             $table->string('invoice_number')->unique();
@@ -30,3 +30,6 @@ return new class extends Migration
         Schema::dropIfExists('invoices');
     }
 };
+
+
+

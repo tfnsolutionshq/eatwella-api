@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('cities', function (Blueprint $table) {
+        Schema::createIfNotExists('cities', function (Blueprint $table) {
             $table->id();
             $table->foreignId('state_id')->constrained('states')->restrictOnDelete();
             $table->string('name', 120);
@@ -29,3 +29,6 @@ return new class extends Migration
         Schema::dropIfExists('cities');
     }
 };
+
+
+

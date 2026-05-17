@@ -12,12 +12,18 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('cart_items', function (Blueprint $table) {
-            $table->foreignUuid('packaging_id')->nullable()->constrained('takeaway_packagings')->nullOnDelete();
+            if (!Schema::hasColumn('cart_items', 'packaging_id')) {
+                $table->foreignUuid('packaging_id')->nullable()->constrained('takeaway_packagings')->nullOnDelete();
+            }
         });
 
         Schema::table('order_items', function (Blueprint $table) {
-            $table->foreignUuid('packaging_id')->nullable()->constrained('takeaway_packagings')->nullOnDelete();
-            $table->decimal('packaging_price', 10, 2)->default(0.00);
+            if (!Schema::hasColumn('order_items', 'packaging_id')) {
+                $table->foreignUuid('packaging_id')->nullable()->constrained('takeaway_packagings')->nullOnDelete();
+            }
+            if (!Schema::hasColumn('order_items', 'packaging_price')) {
+                $table->decimal('packaging_price', 10, 2)->default(0.00);
+            }
         });
     }
 
@@ -37,3 +43,6 @@ return new class extends Migration
         });
     }
 };
+
+
+

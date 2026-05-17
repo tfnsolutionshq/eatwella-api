@@ -188,10 +188,17 @@ class CartController extends Controller
             return response()->json(['message' => 'Cart is empty'], 404);
         }
 
-        $discount = \App\Models\Discount::where('code', strtoupper($request->code))->first();
+        $discount = \App\Models\Discount::where('code', strtoupper($request->code))
+            ->where('discount_type', 'menu')
+            ->first();
 
         if (!$discount || !$discount->isValid()) {
             return response()->json(['message' => 'Invalid or expired discount code'], 400);
+        }
+
+        $user = auth('sanctum')->user();
+        if (!$discount->isForUser($user)) {
+            return response()->json(['message' => 'This discount code is not valid for your account'], 403);
         }
 
         $cart->discount_code = $discount->code;

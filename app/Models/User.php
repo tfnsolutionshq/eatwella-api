@@ -26,6 +26,7 @@ class User extends Authenticatable
         'role',
         'phone',
         'birthday',
+        'birth_month',
         'loyalty_points',
         'is_suspended',
     ];
@@ -51,8 +52,19 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'birthday' => 'date',
+            'birth_month' => 'integer',
             'is_suspended' => 'boolean',
         ];
+    }
+
+    public function getFirstNameAttribute(): string
+    {
+        return explode(' ', $this->name, 2)[0];
+    }
+
+    public function getLastNameAttribute(): string
+    {
+        return explode(' ', $this->name, 2)[1] ?? '';
     }
 
     public function reviews()

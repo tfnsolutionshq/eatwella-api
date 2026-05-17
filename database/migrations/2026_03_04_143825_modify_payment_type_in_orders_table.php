@@ -25,3 +25,6 @@ return new class extends Migration
         DB::statement("ALTER TABLE orders MODIFY COLUMN payment_type ENUM('cash', 'gateway') NOT NULL DEFAULT 'gateway'");
     }
 };
+
+
+

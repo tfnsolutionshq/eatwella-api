@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('delivery_agent_bank_details', function (Blueprint $table) {
+        Schema::createIfNotExists('delivery_agent_bank_details', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('user_id')->constrained()->cascadeOnDelete();
             $table->string('bank_name');
@@ -23,3 +23,6 @@ return new class extends Migration
         Schema::dropIfExists('delivery_agent_bank_details');
     }
 };
+
+
+

@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('dining_tables', function (Blueprint $table) {
+        Schema::createIfNotExists('dining_tables', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->string('name')->unique();
             $table->boolean('is_active')->default(true);
@@ -27,3 +27,6 @@ return new class extends Migration
         Schema::dropIfExists('dining_tables');
     }
 };
+
+
+

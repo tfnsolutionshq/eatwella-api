@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('orders', function (Blueprint $table) {
+        Schema::createIfNotExists('orders', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->string('order_number')->unique();
             $table->string('customer_email');
@@ -31,3 +31,6 @@ return new class extends Migration
         Schema::dropIfExists('orders');
     }
 };
+
+
+

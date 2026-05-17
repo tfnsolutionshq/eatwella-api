@@ -31,6 +31,7 @@ class Order extends Model
         'discount_amount',
         'tax_amount',
         'delivery_fee',
+        'free_delivery_amount',
         'tax_details',
         'discount_code',
         'final_amount',
@@ -59,6 +60,7 @@ class Order extends Model
         'tax_details' => 'array',
         'tax_amount' => 'decimal:2',
         'delivery_fee' => 'decimal:2',
+        'free_delivery_amount' => 'decimal:2',
     ];
 
     protected $hidden = [

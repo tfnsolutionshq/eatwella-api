@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('campaigns', function (Blueprint $table) {
+        Schema::createIfNotExists('campaigns', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->string('title');
             $table->text('details');
@@ -27,3 +27,6 @@ return new class extends Migration
         Schema::dropIfExists('campaigns');
     }
 };
+
+
+

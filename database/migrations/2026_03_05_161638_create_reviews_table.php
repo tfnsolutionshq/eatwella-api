@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('reviews', function (Blueprint $table) {
+        Schema::createIfNotExists('reviews', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('user_id')->constrained()->cascadeOnDelete();
             $table->foreignUuid('order_id')->constrained()->cascadeOnDelete();
@@ -33,3 +33,6 @@ return new class extends Migration
         Schema::dropIfExists('reviews');
     }
 };
+
+
+

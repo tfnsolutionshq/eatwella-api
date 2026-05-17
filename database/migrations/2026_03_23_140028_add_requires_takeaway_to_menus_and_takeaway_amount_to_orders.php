@@ -9,11 +9,15 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('menus', function (Blueprint $table) {
-            $table->boolean('requires_takeaway')->default(false)->after('is_available');
+            if (!Schema::hasColumn('menus', 'requires_takeaway')) {
+                $table->boolean('requires_takeaway')->default(false)->after('is_available');
+            }
         });
 
         Schema::table('orders', function (Blueprint $table) {
-            $table->decimal('takeaway_amount', 10, 2)->default(0)->after('delivery_fee');
+            if (!Schema::hasColumn('orders', 'takeaway_amount')) {
+                $table->decimal('takeaway_amount', 10, 2)->default(0)->after('delivery_fee');
+            }
         });
     }
 
@@ -28,3 +32,6 @@ return new class extends Migration
         });
     }
 };
+
+
+

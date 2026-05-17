@@ -9,8 +9,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('orders', function (Blueprint $table) {
-            $table->foreignUuid('completed_by_id')->nullable()->after('delivery_note')->constrained('users')->nullOnDelete();
-            $table->timestamp('completed_at')->nullable()->after('completed_by_id');
+            if (!Schema::hasColumn('orders', 'completed_by_id')) {
+                $table->foreignUuid('completed_by_id')->nullable()->after('delivery_note')->constrained('users')->nullOnDelete();
+            }
+            if (!Schema::hasColumn('orders', 'completed_at')) {
+                $table->timestamp('completed_at')->nullable()->after('completed_by_id');
+            }
         });
     }
 
@@ -22,3 +26,6 @@ return new class extends Migration
         });
     }
 };
+
+
+

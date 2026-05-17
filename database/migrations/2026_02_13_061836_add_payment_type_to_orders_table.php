@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('orders', function (Blueprint $table) {
-            $table->enum('payment_type', ['cash', 'gateway'])->default('gateway')->after('order_type');
+            if (!Schema::hasColumn('orders', 'payment_type')) {
+                $table->enum('payment_type', ['cash', 'gateway'])->default('gateway')->after('order_type');
+            }
         });
     }
 
@@ -26,3 +28,6 @@ return new class extends Migration
         });
     }
 };
+
+
+

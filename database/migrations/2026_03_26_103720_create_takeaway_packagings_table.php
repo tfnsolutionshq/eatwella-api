@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('takeaway_packagings', function (Blueprint $table) {
+        Schema::createIfNotExists('takeaway_packagings', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->string('size_name'); // e.g. Small, Medium, Large
             $table->decimal('price', 10, 2)->default(0.00);
@@ -28,3 +28,6 @@ return new class extends Migration
         Schema::dropIfExists('takeaway_packagings');
     }
 };
+
+
+

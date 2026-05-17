@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('recommendation_logs', function (Blueprint $table) {
+        Schema::createIfNotExists('recommendation_logs', function (Blueprint $table) {
             $table->id();
             $table->foreignUuid('user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->string('session_id')->nullable();
@@ -30,3 +30,6 @@ return new class extends Migration
         Schema::dropIfExists('recommendation_logs');
     }
 };
+
+
+

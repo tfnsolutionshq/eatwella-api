@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('states', function (Blueprint $table) {
+        Schema::createIfNotExists('states', function (Blueprint $table) {
             $table->id();
             $table->string('name', 100)->unique();
             $table->string('code', 10)->nullable();
@@ -27,3 +27,6 @@ return new class extends Migration
         Schema::dropIfExists('states');
     }
 };
+
+
+
