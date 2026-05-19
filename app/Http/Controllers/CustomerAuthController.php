@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\Order;
+use App\Services\LoyaltyService;
 use App\Services\NewUserDiscountService;
 use App\Mail\WelcomeEmail;
 use Illuminate\Http\Request;
@@ -160,6 +161,28 @@ class CustomerAuthController extends Controller
         });
 
         return response()->json($orders);
+    }
+
+    public function loyaltyInfo(Request $request)
+    {
+        if ($response = $this->requireRole($request, ['customer'])) {
+            return $response;
+        }
+
+        $user = $request->user();
+        $loyalty = app(LoyaltyService::class);
+
+        $amount = (float) $request->query('amount', 0);
+
+        return response()->json([
+            'points_balance'      => $user->loyalty_points ?? 0,
+            'points_value'        => $loyalty->pointsToNaira($user->loyalty_points ?? 0),
+            'point_value'         => $loyalty->getPointValue(),
+            'min_redemption'      => $loyalty->getMinRedemption(),
+            'tiers'               => $loyalty->getTiers(),
+            'points_for_amount'   => $amount > 0 ? $loyalty->calculatePointsForAmount($amount) : null,
+            'points_needed'       => $amount > 0 ? $loyalty->nairaToPoints($amount) : null,
+        ]);
     }
 
     public function logout(Request $request)

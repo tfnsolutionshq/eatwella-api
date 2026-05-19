@@ -9,6 +9,7 @@ use App\Models\Discount;
 use App\Models\Invoice;
 use App\Models\Menu;
 use App\Models\Order;
+use App\Services\LoyaltyService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -17,7 +18,7 @@ use Illuminate\Support\Str;
 
 class CustomerController extends Controller
 {
-    public function __construct(protected PaymentGatewayInterface $paymentGateway) {}
+    public function __construct(protected PaymentGatewayInterface $paymentGateway, protected LoyaltyService $loyalty) {}
 
     public function takeawayPrice()
     {
@@ -441,14 +442,13 @@ class CustomerController extends Controller
                     throw new \Exception('You must be logged in to pay with loyalty points.');
                 }
 
-                $minPoints = (int) (\App\Models\Setting::where('key', 'loyalty_min_points_redemption')->value('value') ?? 100);
-                $conversionRate = (float) (\App\Models\Setting::where('key', 'loyalty_conversion_rate')->value('value') ?? 1.0);
+                $minPoints = $this->loyalty->getMinRedemption();
 
                 if ($user->loyalty_points < $minPoints) {
                     throw new \Exception("You need a minimum of {$minPoints} loyalty points to redeem.");
                 }
 
-                $pointsNeeded = ceil($finalAmount / $conversionRate);
+                $pointsNeeded = $this->loyalty->nairaToPoints($finalAmount);
 
                 if ($user->loyalty_points < $pointsNeeded) {
                     throw new \Exception("Insufficient loyalty points. You need {$pointsNeeded} points for this order.");

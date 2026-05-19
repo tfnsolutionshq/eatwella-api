@@ -10,6 +10,7 @@ use App\Models\Menu;
 use App\Models\Order;
 use App\Models\Setting;
 use App\Models\User;
+use App\Services\LoyaltyService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -94,8 +95,8 @@ class OrderController extends Controller
 
                 // Restore loyalty points if paid with loyalty points
                 if ($order->payment_type === 'loyalty_points' && $order->user_id) {
-                    $conversionRate = (float) (Setting::where('key', 'loyalty_conversion_rate')->value('value') ?? 1.0);
-                    $pointsToRestore = (int) ceil($order->final_amount / $conversionRate);
+                    $loyalty = app(LoyaltyService::class);
+                    $pointsToRestore = $loyalty->nairaToPoints($order->final_amount);
                     User::where('id', $order->user_id)->increment('loyalty_points', $pointsToRestore);
                 }
             }
@@ -174,15 +175,19 @@ class OrderController extends Controller
 
     private function awardLoyaltyPoints(Order $order): void
     {
-        if (! $order->user_id || $order->points_earned) {
+        if (! $order->user_id || $order->points_earned || $order->payment_type === 'loyalty_points') {
             return;
         }
 
-        $pointsPerOrder = (int) (Setting::where('key', 'loyalty_points_per_order')->value('value') ?? 10);
+        $loyalty = app(LoyaltyService::class);
+        $points = $loyalty->calculatePointsForAmount($order->final_amount);
+
+        if ($points <= 0) return;
+
         $customer = User::find($order->user_id);
         if ($customer) {
-            $customer->increment('loyalty_points', $pointsPerOrder);
-            $order->update(['points_earned' => $pointsPerOrder]);
+            $customer->increment('loyalty_points', $points);
+            $order->update(['points_earned' => $points]);
         }
     }
 

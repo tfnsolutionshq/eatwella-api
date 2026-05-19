@@ -62,6 +62,41 @@ class SettingsController extends Controller
         return response()->json(['message' => 'Availability hours updated successfully']);
     }
 
+    public function getLoyaltySettings(Request $request)
+    {
+        if ($response = $this->requireRole($request, ['admin'])) {
+            return $response;
+        }
+
+        return response()->json([
+            'tiers'           => json_decode(Setting::where('key', 'loyalty_points_tiers')->value('value') ?? '[]', true),
+            'point_value'     => (float) (Setting::where('key', 'loyalty_point_value')->value('value') ?? 1),
+            'min_redemption'  => (int) (Setting::where('key', 'loyalty_min_points_redemption')->value('value') ?? 100),
+        ]);
+    }
+
+    public function updateLoyaltySettings(Request $request)
+    {
+        if ($response = $this->requireRole($request, ['admin'])) {
+            return $response;
+        }
+
+        $validated = $request->validate([
+            'tiers'                  => 'required|array|min:1',
+            'tiers.*.min'            => 'required|integer|min:0',
+            'tiers.*.max'            => 'nullable|integer|gt:tiers.*.min',
+            'tiers.*.points'         => 'required|integer|min:1',
+            'point_value'            => 'required|numeric|min:0.01',
+            'min_redemption'         => 'required|integer|min:1',
+        ]);
+
+        Setting::updateOrCreate(['key' => 'loyalty_points_tiers'],       ['value' => json_encode($validated['tiers'])]);
+        Setting::updateOrCreate(['key' => 'loyalty_point_value'],        ['value' => $validated['point_value']]);
+        Setting::updateOrCreate(['key' => 'loyalty_min_points_redemption'], ['value' => $validated['min_redemption']]);
+
+        return response()->json(['message' => 'Loyalty settings updated successfully']);
+    }
+
     public function getAvailabilityHours()
     {
         $value = Setting::where('key', 'availability_hours')->value('value');

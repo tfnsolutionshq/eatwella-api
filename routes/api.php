@@ -117,6 +117,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/change-password', [CustomerAuthController::class, 'changePassword']);
         Route::delete('/delete-account', [CustomerAuthController::class, 'deleteAccount']);
 
+        Route::get('/loyalty', [CustomerAuthController::class, 'loyaltyInfo']);
         Route::post('/logout', [CustomerAuthController::class, 'logout']);
     });
 
@@ -149,6 +150,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/settings', [SettingsController::class, 'index']);
     Route::put('/admin/settings', [SettingsController::class, 'update']);
     Route::put('/admin/availability-hours', [SettingsController::class, 'setAvailabilityHours']);
+    Route::get('/admin/loyalty', [SettingsController::class, 'getLoyaltySettings']);
+    Route::put('/admin/loyalty', [SettingsController::class, 'updateLoyaltySettings']);
 
     // Review Management
     Route::get('/admin/reviews', [ReviewController::class, 'index']);
