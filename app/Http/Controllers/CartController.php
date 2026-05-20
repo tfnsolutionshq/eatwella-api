@@ -26,10 +26,12 @@ class CartController extends Controller
      */
     public function index(Request $request)
     {
-        if ($request->user()) {
-            $cart = Cart::with(['items.menu', 'items.packaging'])->where('user_id', $request->user()->id)->first();
+        $user = auth('sanctum')->user();
+
+        if ($user) {
+            $cart = Cart::with(['items.menu', 'items.packaging'])->where('user_id', $user->id)->first();
         } else {
-            $cartId = $this->getCartId($request);
+            $cartId = $request->header('X-Cart-ID');
             if (!$cartId) {
                 return response()->json(['items' => []]);
             }
@@ -101,8 +103,10 @@ class CartController extends Controller
             'packaging_id' => 'sometimes|nullable|exists:takeaway_packagings,id',
         ]);
 
-        if ($request->user()) {
-            $cart = Cart::where('user_id', $request->user()->id)->first();
+        $user = auth('sanctum')->user();
+
+        if ($user) {
+            $cart = Cart::where('user_id', $user->id)->first();
         } else {
             $cartId = $this->getCartId($request);
             if (!$cartId) {
@@ -141,8 +145,10 @@ class CartController extends Controller
      */
     public function destroy(Request $request, $itemId)
     {
-        if ($request->user()) {
-            $cart = Cart::where('user_id', $request->user()->id)->first();
+        $user = auth('sanctum')->user();
+
+        if ($user) {
+            $cart = Cart::where('user_id', $user->id)->first();
         } else {
             $cartId = $this->getCartId($request);
             if (!$cartId) {
@@ -174,8 +180,10 @@ class CartController extends Controller
     {
         $request->validate(['code' => 'required|string']);
 
-        if ($request->user()) {
-            $cart = Cart::where('user_id', $request->user()->id)->first();
+        $user = auth('sanctum')->user();
+
+        if ($user) {
+            $cart = Cart::where('user_id', $user->id)->first();
         } else {
             $cartId = $this->getCartId($request);
             if (!$cartId) {
@@ -216,8 +224,10 @@ class CartController extends Controller
      */
     public function removeDiscount(Request $request)
     {
-        if ($request->user()) {
-            $cart = Cart::where('user_id', $request->user()->id)->first();
+        $user = auth('sanctum')->user();
+
+        if ($user) {
+            $cart = Cart::where('user_id', $user->id)->first();
         } else {
             $cartId = $this->getCartId($request);
             if (!$cartId) {
