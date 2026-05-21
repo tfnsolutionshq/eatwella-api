@@ -21,7 +21,7 @@
 <div style="margin-bottom: 20px;">
     @if($order->order_type === 'delivery' && $order->delivery_address)
     <div class="row">
-        <span class="label">Delivery Axis</span>
+        <span class="label">Delivery Axis:&nbsp;</span>
         <span class="value">
             {{ $order->delivery_address }}
             @if($order->deliveryZone)
@@ -37,32 +37,32 @@
     </div>
     @endif
     <div class="row">
-        <span class="label">Order Type</span>
-        <span class="value"> {{ ucfirst($order->order_type) }}</span>
+        <span class="label">Order Type:&nbsp;</span>
+        <span class="value">{{ ucfirst($order->order_type) }}</span>
     </div>
     <div class="row">
-        <span class="label">Customer</span>
-        <span class="value"> {{ $order->customer_name }}</span>
+        <span class="label">Customer:&nbsp;</span>
+        <span class="value">{{ $order->customer_name }}</span>
     </div>
     <div class="row">
-        <span class="label">Email</span>
-        <span class="value"> {{ $order->customer_email }}</span>
+        <span class="label">Email:&nbsp;</span>
+        <span class="value">{{ $order->customer_email }}</span>
     </div>
     @if($order->customer_phone)
     <div class="row">
-        <span class="label">Phone</span>
-        <span class="value">  {{ $order->customer_phone }}</span>
+        <span class="label">Phone:&nbsp;</span>
+        <span class="value">{{ $order->customer_phone }}</span>
     </div>
     @endif
     @if($order->order_type === 'dine' && $order->table_number)
     <div class="row">
-        <span class="label">Table</span>
-        <span class="value">  {{ $order->table_number }}</span>
+        <span class="label">Table:&nbsp;</span>
+        <span class="value">{{ $order->table_number }}</span>
     </div>
     @endif
     <div class="row">
-        <span class="label">Date</span>
-        <span class="value"> {{ $order->created_at->format('M d, Y h:i A') }}</span>
+        <span class="label">Date:&nbsp;</span>
+        <span class="value">{{ $order->created_at->format('M d, Y h:i A') }}</span>
     </div>
 </div>
 
@@ -91,28 +91,28 @@
 {{-- Totals --}}
 @if($order->tax_amount > 0)
 <div class="total-row">
-    <span>Tax Charges:</span>
+    <span>Tax Charges:&nbsp;</span>
     <span><strong>₦{{ number_format($order->tax_amount, 2) }} (VAT)</strong></span>
 </div>
 @endif
 @if($order->discount_amount > 0)
 <div class="total-row">
-    <span>Discount ({{ $order->discount_code }}):</span>
+    <span>Discount ({{ $order->discount_code }}):&nbsp;</span>
     <span>-₦{{ number_format($order->discount_amount, 2) }}</span>
 </div>
 @endif
 @if($order->delivery_fee > 0)
 <div class="total-row">
-    <span>Delivery Fee:</span>
+    <span>Delivery Fee:&nbsp;</span>
     <span>₦{{ number_format($order->delivery_fee, 2) }}</span>
 </div>
 @endif
 <div class="total-row final">
-    <span>Total Payment:</span>
+    <span>Total Payment:&nbsp;</span>
     <span class="amount">₦{{ number_format($order->final_amount, 2) }}</span>
 </div>
 <div class="total-row" style="margin-top: 6px;">
-    <span>Mode of Payment:</span>
+    <span>Mode of Payment:&nbsp;</span>
     <span style="color: #ff6b00; font-weight: 600;">{{ ucfirst($order->payment_type) }}</span>
 </div>
 

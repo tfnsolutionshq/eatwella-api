@@ -17,27 +17,27 @@
 <div class="section-title">Delivery Details</div>
 <div style="margin-bottom: 20px;">
     <div class="row">
-        <span class="label">Agent</span>
+        <span class="label">Agent:&nbsp;</span>
         <span class="value">{{ $agent->name }}</span>
     </div>
     <div class="row">
-        <span class="label">Customer</span>
+        <span class="label">Customer:&nbsp;</span>
         <span class="value">{{ $order->customer_name }}</span>
     </div>
     <div class="row">
-        <span class="label">Phone</span>
+        <span class="label">Phone:&nbsp;</span>
         <span class="value">{{ $order->customer_phone }}</span>
     </div>
     <div class="row">
-        <span class="label">Address</span>
+        <span class="label">Address:&nbsp;</span>
         <span class="value">{{ $order->delivery_address ?? 'N/A' }}</span>
     </div>
     <div class="row">
-        <span class="label">Mode of Payment</span>
+        <span class="label">Mode of Payment:&nbsp;</span>
         <span class="value">{{ ucfirst($order->payment_type) }}</span>
     </div>
     <div class="row">
-        <span class="label">Total Amount</span>
+        <span class="label">Total Amount:&nbsp;</span>
         <span class="value orange">₦{{ number_format($order->final_amount, 2) }}</span>
     </div>
 </div>

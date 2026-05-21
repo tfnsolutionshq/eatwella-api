@@ -17,19 +17,19 @@
 <div class="section-title">Order Summary</div>
 <div style="margin-bottom: 20px;">
     <div class="row">
-        <span class="label">Order Type</span>
+        <span class="label">Order Type:&nbsp;</span>
         <span class="value">{{ ucfirst($order->order_type) }}</span>
     </div>
     <div class="row">
-        <span class="label">Customer</span>
+        <span class="label">Customer:&nbsp;</span>
         <span class="value">{{ $order->customer_name }}</span>
     </div>
     <div class="row">
-        <span class="label">Email</span>
+        <span class="label">Email:&nbsp;</span>
         <span class="value">{{ $order->customer_email }}</span>
     </div>
     <div class="row">
-        <span class="label">Completed At</span>
+        <span class="label">Completed At:&nbsp;</span>
         <span class="value">{{ $order->completed_at?->format('M d, Y h:i A') ?? $order->updated_at->format('M d, Y h:i A') }}</span>
     </div>
 </div>
@@ -48,22 +48,22 @@
 
 @if($order->tax_amount > 0)
 <div class="total-row">
-    <span>Tax Charges:</span>
+    <span>Tax Charges:&nbsp;</span>
     <span><strong>₦{{ number_format($order->tax_amount, 2) }} (VAT)</strong></span>
 </div>
 @endif
 @if($order->discount_amount > 0)
 <div class="total-row">
-    <span>Discount ({{ $order->discount_code }}):</span>
+    <span>Discount ({{ $order->discount_code }}):&nbsp;</span>
     <span>-₦{{ number_format($order->discount_amount, 2) }}</span>
 </div>
 @endif
 <div class="total-row final">
-    <span>Total Payment:</span>
+    <span>Total Payment:&nbsp;</span>
     <span class="amount">₦{{ number_format($order->final_amount, 2) }}</span>
 </div>
 <div class="total-row" style="margin-top: 6px;">
-    <span>Mode of Payment:</span>
+    <span>Mode of Payment:&nbsp;</span>
     <span style="color: #ff6b00; font-weight: 600;">{{ ucfirst($order->payment_type) }}</span>
 </div>
 

@@ -25,19 +25,19 @@
     <div style="margin-bottom: 20px;">
         <div class="section-title">How to use your gifts</div>
         <div class="row">
-            <span class="label">1. Place your order</span>
+            <span class="label">1. Place your order:&nbsp;</span>
             <span class="value">Visit EatWella and add items to your cart</span>
         </div>
         <div class="row">
-            <span class="label">2. Apply discount code</span>
+            <span class="label">2. Apply discount code:&nbsp;</span>
             <span class="value">Enter <strong style="color:#ff6b00;">{{ $menuDiscount->code }}</strong> at checkout</span>
         </div>
         <div class="row">
-            <span class="label">3. Free delivery</span>
+            <span class="label">3. Free delivery:&nbsp;</span>
             <span class="value">Applied automatically — no code needed</span>
         </div>
         <div class="row">
-            <span class="label">4. Valid until</span>
+            <span class="label">4. Valid until:&nbsp;</span>
             <span class="value">End of today only</span>
         </div>
     </div>
@@ -54,15 +54,15 @@
     <div style="margin-bottom: 20px;">
         <div class="section-title">How to use your gift</div>
         <div class="row">
-            <span class="label">1. Place your order</span>
+            <span class="label">1. Place your order:&nbsp;</span>
             <span class="value">Visit EatWella and add items to your cart</span>
         </div>
         <div class="row">
-            <span class="label">2. Apply code</span>
+            <span class="label">2. Apply code:&nbsp;</span>
             <span class="value">Enter <strong style="color:#ff6b00;">{{ $menuDiscount->code }}</strong> at checkout</span>
         </div>
         <div class="row">
-            <span class="label">3. Valid until</span>
+            <span class="label">3. Valid until:&nbsp;</span>
             <span class="value">End of today only</span>
         </div>
     </div>
@@ -75,15 +75,15 @@
     <div style="margin-bottom: 20px;">
         <div class="section-title">How to use your gift</div>
         <div class="row">
-            <span class="label">1. Place your order</span>
+            <span class="label">1. Place your order:&nbsp;</span>
             <span class="value">Visit EatWella and add items to your cart</span>
         </div>
         <div class="row">
-            <span class="label">2. Free delivery</span>
+            <span class="label">2. Free delivery:&nbsp;</span>
             <span class="value">Applied automatically at checkout — no code needed</span>
         </div>
         <div class="row">
-            <span class="label">3. Valid until</span>
+            <span class="label">3. Valid until:&nbsp;</span>
             <span class="value">End of today only</span>
         </div>
     </div>

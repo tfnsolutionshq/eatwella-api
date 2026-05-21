@@ -17,23 +17,23 @@
 <div class="section-title">Order Details</div>
 <div style="margin-bottom: 20px;">
     <div class="row">
-        <span class="label">Order Type</span>
+        <span class="label">Order Type:&nbsp;</span>
         <span class="value">{{ ucfirst($order->order_type) }}</span>
     </div>
     <div class="row">
-        <span class="label">Customer</span>
+        <span class="label">Customer:&nbsp;</span>
         <span class="value">{{ $order->customer_name }}</span>
     </div>
     <div class="row">
-        <span class="label">Date</span>
+        <span class="label">Date:&nbsp;</span>
         <span class="value">{{ $order->created_at->format('M d, Y h:i A') }}</span>
     </div>
     <div class="row">
-        <span class="label">Total Amount</span>
+        <span class="label">Total Amount:&nbsp;</span>
         <span class="value">₦{{ number_format($order->final_amount, 2) }}</span>
     </div>
     <div class="row">
-        <span class="label">Mode of Payment</span>
+        <span class="label">Mode of Payment:&nbsp;</span>
         <span class="value">{{ ucfirst($order->payment_type) }}</span>
     </div>
 </div>

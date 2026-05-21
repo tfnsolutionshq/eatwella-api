@@ -25,15 +25,15 @@
     </div>
     <div style="margin-bottom: 20px;">
         <div class="row">
-            <span class="label">Apply code</span>
+            <span class="label">Apply code:&nbsp;</span>
             <span class="value">Enter <strong style="color:#ff6b00;">{{ $menuDiscount->code }}</strong> at checkout</span>
         </div>
         <div class="row">
-            <span class="label">Free delivery</span>
+            <span class="label">Free delivery:&nbsp;</span>
             <span class="value">Applied automatically — no code needed</span>
         </div>
         <div class="row">
-            <span class="label">Valid</span>
+            <span class="label">Valid:&nbsp;</span>
             <span class="value">First order only</span>
         </div>
     </div>
@@ -47,11 +47,11 @@
     </div>
     <div style="margin-bottom: 20px;">
         <div class="row">
-            <span class="label">Apply code</span>
+            <span class="label">Apply code:&nbsp;</span>
             <span class="value">Enter <strong style="color:#ff6b00;">{{ $menuDiscount->code }}</strong> at checkout</span>
         </div>
         <div class="row">
-            <span class="label">Valid</span>
+            <span class="label">Valid:&nbsp;</span>
             <span class="value">First order only</span>
         </div>
     </div>
@@ -63,11 +63,11 @@
     </div>
     <div style="margin-bottom: 20px;">
         <div class="row">
-            <span class="label">How it works</span>
+            <span class="label">How it works:&nbsp;</span>
             <span class="value">No code needed, applied automatically</span>
         </div>
         <div class="row">
-            <span class="label">Valid</span>
+            <span class="label">Valid:&nbsp;</span>
             <span class="value">First delivery order only</span>
         </div>
     </div>

@@ -17,23 +17,23 @@
 <div class="section-title">Applicant Details</div>
 <div style="margin-bottom: 20px;">
     <div class="row">
-        <span class="label">Full Name</span>
+        <span class="label">Full Name:&nbsp;</span>
         <span class="value">{{ $payload['full_name'] }}</span>
     </div>
     <div class="row">
-        <span class="label">Email</span>
+        <span class="label">Email:&nbsp;</span>
         <span class="value">{{ $payload['email'] }}</span>
     </div>
     <div class="row">
-        <span class="label">Phone</span>
+        <span class="label">Phone:&nbsp;</span>
         <span class="value">{{ $payload['phone'] }}</span>
     </div>
     <div class="row">
-        <span class="label">Role Category</span>
+        <span class="label">Role Category:&nbsp;</span>
         <span class="value">{{ $payload['role'] ?? 'N/A' }}</span>
     </div>
     <div class="row">
-        <span class="label">Application ID</span>
+        <span class="label">Application ID:&nbsp;</span>
         <span class="value" style="font-family: monospace; font-size: 12px;">{{ $payload['application_id'] }}</span>
     </div>
 </div>
