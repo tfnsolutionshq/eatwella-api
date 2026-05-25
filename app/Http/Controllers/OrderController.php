@@ -138,6 +138,82 @@ class OrderController extends Controller
         return response()->json($order->load('completedBy'));
     }
 
+    public function settlePayment(Request $request, Order $order)
+    {
+        if ($response = $this->requireRole($request, ['admin', 'attendant', 'supervisor'])) {
+            return $response;
+        }
+
+        if ($order->status !== 'pending' || ! $order->attendant_id) {
+            return response()->json(['message' => 'Only pending staff orders can be settled.'], 422);
+        }
+
+        $validated = $request->validate([
+            'payment_type' => 'required|in:cash,pos,transfer',
+            'action'       => 'nullable|in:send_to_kitchen,complete',
+        ]);
+
+        $user = $request->user();
+        $action = $validated['action'] ?? null;
+
+        $orderStatus = match ($action) {
+            'send_to_kitchen' => 'in_kitchen',
+            'complete'        => 'completed',
+            default           => 'confirmed',
+        };
+
+        $updateData = [
+            'payment_type' => $validated['payment_type'],
+            'status'       => $orderStatus,
+            'expires_at'   => null,
+        ];
+
+        if ($orderStatus === 'in_kitchen') {
+            $updateData['sent_to_kitchen_by_id'] = $user->id;
+            $updateData['sent_to_kitchen_at']    = now();
+        } elseif ($orderStatus === 'completed') {
+            $updateData['completed_by_id'] = $user->id;
+            $updateData['completed_at']    = now();
+        }
+
+        $order->update($updateData);
+
+        if ($order->invoice) {
+            $order->invoice->update([
+                'payment_status' => 'paid',
+                'payment_method' => $validated['payment_type'],
+            ]);
+        }
+
+        $order->loadMissing('orderItems');
+        foreach ($order->orderItems as $item) {
+            $menu = Menu::find($item->menu_id);
+            if ($menu) {
+                $menu->deductStock($item->quantity, $user->id);
+            }
+        }
+
+        if ($orderStatus === 'completed') {
+            $this->awardLoyaltyPoints($order);
+            try {
+                Mail::to($order->customer_email)->send(new \App\Mail\OrderCompleted($order));
+            } catch (\Exception $e) {
+                Log::error('Failed to send order completed email: ' . $e->getMessage());
+            }
+        }
+
+        try {
+            Mail::to($order->customer_email)->send(new \App\Mail\OrderPlaced($order));
+        } catch (\Exception $e) {
+            Log::error('Failed to send order placed email: ' . $e->getMessage());
+        }
+
+        return response()->json([
+            'message' => 'Payment settled successfully.',
+            'order'   => $order->load('orderItems.menu', 'invoice', 'completedBy'),
+        ]);
+    }
+
     public function sendToKitchen(Request $request, Order $order)
     {
         if ($response = $this->requireRole($request, ['admin', 'attendant', 'supervisor'])) {

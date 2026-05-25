@@ -170,6 +170,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Order Management
     Route::post('/admin/orders/{order}/send-to-kitchen', [OrderController::class, 'sendToKitchen']);
+    Route::patch('/admin/orders/{order}/settle', [OrderController::class, 'settlePayment']);
     Route::get('/admin/orders', [OrderController::class, 'index']);
     Route::get('/admin/orders/attendant', [OrderController::class, 'attendantCreatedOrders']);
     Route::get('/admin/orders/{order}', [OrderController::class, 'show']);

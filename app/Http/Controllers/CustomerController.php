@@ -130,7 +130,7 @@ class CustomerController extends Controller
             if (! in_array($role, ['customer', 'attendant', 'admin'], true)) {
                 return response()->json(['message' => 'Forbidden: Only customers, attendants and admins can checkout. (Current role: ' . $user->role . ')'], 403);
             }
-            $isAttendant = in_array($role, ['attendant', 'admin']);
+            $isAttendant = in_array($role, ['attendant', 'admin', 'supervisor']);
             $isCustomer = $role === 'customer';
         } else {
             $isAttendant = false;
@@ -139,16 +139,17 @@ class CustomerController extends Controller
 
         $rules = [
             'order_type'   => 'required|in:dine,pickup,delivery',
-            'payment_type' => 'required|in:cash,pos,transfer,gateway,loyalty_points',
+            'payment_type' => $isAttendant ? 'nullable|in:cash,pos,transfer,gateway,loyalty_points' : 'required|in:cash,pos,transfer,gateway,loyalty_points',
             'items'        => 'nullable|array',
             'items.*.menu_id'      => 'required_with:items|exists:menus,id',
             'items.*.quantity'     => 'required_with:items|integer|min:1',
             'items.*.packaging_id' => 'nullable|exists:takeaway_packagings,id',
         ];
 
-        // Staff can link order to an existing customer
+        // Staff can link order to an existing customer and specify post-create action
         if ($isAttendant) {
             $rules['customer_user_id'] = 'nullable|exists:users,id';
+            $rules['action'] = 'nullable|in:send_to_kitchen,complete';
         }
 
         // Guests must provide customer details
@@ -421,6 +422,58 @@ class CustomerController extends Controller
             // Generate order number upfront for all payment types
             $orderNumber = Order::generateOrderNumber();
 
+            // Staff save-for-later: no payment_type provided
+            if ($isAttendant && empty($validated['payment_type'])) {
+                $order = Order::create([
+                    'order_number'         => $orderNumber,
+                    'user_id'              => $orderUserId,
+                    'attendant_id'         => $attendantId,
+                    'order_type'           => $validated['order_type'],
+                    'payment_type'         => null,
+                    'customer_email'       => $customerEmail,
+                    'customer_name'        => $customerName,
+                    'customer_phone'       => $customerPhone,
+                    'table_number'         => $validated['table_number'] ?? null,
+                    'delivery_address'     => $deliveryAddress,
+                    'delivery_city'        => null,
+                    'delivery_zip'         => null,
+                    'delivery_zone_id'     => $deliveryZoneId,
+                    'total_amount'         => $totalAmount,
+                    'discount_amount'      => $discountAmount,
+                    'tax_amount'           => $totalTaxAmount,
+                    'delivery_fee'         => $deliveryFee,
+                    'free_delivery_amount' => $freeDeliveryAmount,
+                    'takeaway_amount'      => $takeawayAmount,
+                    'tax_details'          => $taxDetails,
+                    'discount_code'        => $discountCode,
+                    'final_amount'         => $finalAmount,
+                    'status'               => 'pending',
+                    'delivery_pin'         => $deliveryPin,
+                    'expires_at'           => null,
+                ]);
+
+                foreach ($orderItemsData as $data) {
+                    $order->orderItems()->create($data);
+                }
+
+                Invoice::create([
+                    'order_id'       => $order->id,
+                    'invoice_number' => 'INV-'.strtoupper(Str::random(10)),
+                    'amount'         => $finalAmount,
+                    'payment_status' => 'unpaid',
+                    'payment_method' => null,
+                ]);
+
+                if (isset($cart) && $cart) {
+                    $cart->delete();
+                }
+
+                return response()->json([
+                    'message' => 'Order saved. Awaiting payment.',
+                    'order'   => $order->load('orderItems', 'invoice'),
+                ], 201);
+            }
+
             // Handle payment based on payment type
             if ($validated['payment_type'] === 'gateway') {
                 // Initialize Payment with Paystack using our order number as reference
@@ -462,8 +515,12 @@ class CustomerController extends Controller
             } else {
                 // Cash / POS / Transfer payment
                 if ($isAttendant) {
-                    // Attendant placed order: assumed paid/confirmed immediately
-                    $orderStatus = 'confirmed';
+                    $action = $validated['action'] ?? null;
+                    $orderStatus = match ($action) {
+                        'send_to_kitchen' => 'in_kitchen',
+                        'complete'        => 'completed',
+                        default           => 'confirmed',
+                    };
                     $paymentStatus = 'paid';
                 } else {
                     // Customer placed order with cash: pending until attendant confirms payment
@@ -476,9 +533,6 @@ class CustomerController extends Controller
 
             // Create Order
             $expiresAt = null;
-            if (in_array($validated['payment_type'], ['cash', 'pos', 'transfer']) && in_array($validated['order_type'], ['dine', 'pickup'])) {
-                $expiresAt = now()->addMinutes(45);
-            }
 
             $deliveryPin = null;
             if ($validated['order_type'] === 'delivery') {
@@ -518,14 +572,28 @@ class CustomerController extends Controller
                 $order->orderItems()->create($data);
             }
 
-            // Deduct stock only for immediately confirmed orders (attendant or loyalty points)
-            if ($orderStatus === 'confirmed') {
+            // Deduct stock for all immediately paid orders
+            if (in_array($orderStatus, ['confirmed', 'in_kitchen', 'completed'])) {
                 foreach ($orderItemsData as $data) {
                     $menu = Menu::find($data['menu_id']);
                     if ($menu) {
                         $menu->deductStock($data['quantity'], $user?->id);
                     }
                 }
+            }
+
+            // Track kitchen/completion metadata if action was specified
+            if ($orderStatus === 'in_kitchen') {
+                $order->update([
+                    'sent_to_kitchen_by_id' => $user->id,
+                    'sent_to_kitchen_at'    => now(),
+                ]);
+            } elseif ($orderStatus === 'completed') {
+                $order->update([
+                    'completed_by_id' => $user->id,
+                    'completed_at'    => now(),
+                    'expires_at'      => null,
+                ]);
             }
 
             // Create Invoice
