@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\Order;
+use App\Models\Setting;
+use App\Models\Tax;
 use App\Services\LoyaltyService;
 use App\Services\NewUserDiscountService;
 use App\Mail\WelcomeEmail;
@@ -157,7 +159,21 @@ class CustomerAuthController extends Controller
             ->paginate($perPage);
 
         $orders->getCollection()->transform(function ($order) {
-            return $order->makeVisible('delivery_pin');
+            $order->makeVisible('delivery_pin');
+
+            $taxMode     = Setting::where('key', 'tax_mode')->value('value') ?? 'exclusive';
+            $activeTaxes = Tax::where('is_active', true)->get();
+
+            if ($taxMode === 'inclusive' && $activeTaxes->isNotEmpty()) {
+                $totalRate = $activeTaxes->sum(fn($t) => (float) $t->rate);
+                $order->orderItems->each(function ($item) use ($totalRate) {
+                    if ($item->menu) {
+                        $item->menu->price = round((float) $item->menu->price * (1 + $totalRate / 100), 2);
+                    }
+                });
+            }
+
+            return $order;
         });
 
         return response()->json($orders);

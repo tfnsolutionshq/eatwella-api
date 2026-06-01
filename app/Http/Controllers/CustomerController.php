@@ -681,6 +681,26 @@ class CustomerController extends Controller
         });
     }
 
+    private function applyInclusivePriceToOrderItems(Order $order): Order
+    {
+        $taxMode     = $this->getTaxMode();
+        $activeTaxes = Tax::where('is_active', true)->get();
+
+        if ($taxMode !== 'inclusive' || $activeTaxes->isEmpty()) {
+            return $order;
+        }
+
+        $totalRate = $activeTaxes->sum(fn($t) => (float) $t->rate);
+
+        $order->orderItems->each(function ($item) use ($totalRate) {
+            if ($item->menu) {
+                $item->menu->price = round((float) $item->menu->price * (1 + $totalRate / 100), 2);
+            }
+        });
+
+        return $order;
+    }
+
     public function trackOrder($identifier)
     {
         $order = Order::whereRaw('UPPER(order_number) = ?', [strtoupper($identifier)])
@@ -690,6 +710,6 @@ class CustomerController extends Controller
 
         $order->makeVisible('delivery_pin');
 
-        return $order;
+        return $this->applyInclusivePriceToOrderItems($order);
     }
 }
