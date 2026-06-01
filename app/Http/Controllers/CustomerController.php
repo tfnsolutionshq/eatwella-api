@@ -4,11 +4,18 @@ namespace App\Http\Controllers;
 
 use App\Interfaces\PaymentGatewayInterface;
 use App\Mail\OrderPlaced;
+use App\Models\Address;
 use App\Models\Cart;
 use App\Models\Discount;
 use App\Models\Invoice;
 use App\Models\Menu;
+use App\Models\MenuRecommendation;
 use App\Models\Order;
+use App\Models\Setting;
+use App\Models\TakeawayPackaging;
+use App\Models\Tax;
+use App\Models\User;
+use App\Models\Zone;
 use App\Services\LoyaltyService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -22,7 +29,7 @@ class CustomerController extends Controller
 
     public function takeawayPrice()
     {
-        $value = \App\Models\Setting::where('key', 'takeaway_price')->value('value');
+        $value = Setting::where('key', 'takeaway_price')->value('value');
         $price = (float) ($value ?? 0);
         if ($price < 0) $price = 0;
         return response()->json(['takeaway_price' => round($price, 2)]);
@@ -30,13 +37,13 @@ class CustomerController extends Controller
 
     private function checkAvailabilityHours(string $orderType = null): void
     {
-        $hoursJson = \App\Models\Setting::where('key', 'availability_hours')->value('value');
+        $hoursJson = Setting::where('key', 'availability_hours')->value('value');
         if (!$hoursJson) return;
 
         $hours = json_decode($hoursJson, true);
         if (empty($hours)) return;
 
-        $tz  = \App\Models\Setting::where('key', 'restaurant_timezone')->value('value') ?? 'Africa/Lagos';
+        $tz  = Setting::where('key', 'restaurant_timezone')->value('value') ?? 'Africa/Lagos';
         $now = \Carbon\Carbon::now($tz);
         $day = $now->format('l');
 
@@ -62,6 +69,11 @@ class CustomerController extends Controller
         }
     }
 
+    private function getTaxMode(): string
+    {
+        return Setting::where('key', 'tax_mode')->value('value') ?? 'exclusive';
+    }
+
     public function listMenus(Request $request)
     {
         $query = Menu::where('is_available', true)->with('category');
@@ -82,7 +94,21 @@ class CustomerController extends Controller
             $query->where('name', 'like', '%'.$request->search.'%');
         }
 
-        return $query->paginate($request->get('per_page', 15));
+        $paginated   = $query->paginate($request->get('per_page', 15));
+        $taxMode     = $this->getTaxMode();
+        $activeTaxes = Tax::where('is_active', true)->get();
+
+        if ($taxMode === 'inclusive' && $activeTaxes->isNotEmpty()) {
+            $totalRate = $activeTaxes->sum(fn($t) => (float) $t->rate);
+            $paginated->setCollection(
+                $paginated->getCollection()->map(function ($menu) use ($totalRate) {
+                    $menu->price = round($menu->price * (1 + $totalRate / 100), 2);
+                    return $menu;
+                })
+            );
+        }
+
+        return $paginated;
     }
 
     public function showMenu(Menu $menu)
@@ -97,9 +123,8 @@ class CustomerController extends Controller
                   ->orderBy('menu_complements.sort_order', 'asc');
         }]);
 
-        // If no curated complements, try to get algorithmic recommendations
         if ($menu->complements->isEmpty()) {
-            $recommendations = \App\Models\MenuRecommendation::where('menu_id', $menu->id)
+            $recommendations = MenuRecommendation::where('menu_id', $menu->id)
                 ->orderByDesc('score')
                 ->limit(4)
                 ->get()
@@ -109,9 +134,16 @@ class CustomerController extends Controller
                 $algorithmicComplements = Menu::whereIn('id', $recommendations)
                     ->where('is_available', true)
                     ->get();
-                // Set dynamic attribute to indicate they are algorithmic
                 $menu->setRelation('complements', $algorithmicComplements);
             }
+        }
+
+        $taxMode     = $this->getTaxMode();
+        $activeTaxes = Tax::where('is_active', true)->get();
+
+        if ($taxMode === 'inclusive' && $activeTaxes->isNotEmpty()) {
+            $totalRate   = $activeTaxes->sum(fn($t) => (float) $t->rate);
+            $menu->price = round($menu->price * (1 + $totalRate / 100), 2);
         }
 
         return response()->json($menu);
@@ -214,10 +246,12 @@ class CustomerController extends Controller
             $takeawayAmount = 0;
 
             // Tax Calculation Variables
-            $activeTaxes = \App\Models\Tax::where('is_active', true)->get();
-            $totalTaxAmount = 0;
+            $activeTaxes       = Tax::where('is_active', true)->get();
+            $taxMode           = $this->getTaxMode();
+            $totalTaxAmount    = 0;
             $totalExclusiveTax = 0;
-            $taxDetails = [];
+            $taxDetails        = [];
+            $totalRate         = $activeTaxes->sum(fn($t) => (float) $t->rate);
 
             $needsTakeaway = in_array($validated['order_type'], ['delivery', 'pickup']);
 
@@ -231,7 +265,12 @@ class CustomerController extends Controller
                     throw new \Exception("Insufficient stock for {$menu->name}. Only {$menu->stock_quantity} left.");
                 }
 
-                $subtotal = $menu->price * $item['quantity'];
+                // Use inclusive price (tax baked in) if mode is inclusive
+                $unitPrice = ($taxMode === 'inclusive' && $activeTaxes->isNotEmpty())
+                    ? round((float) $menu->price * (1 + $totalRate / 100), 2)
+                    : (float) $menu->price;
+
+                $subtotal     = $unitPrice * $item['quantity'];
                 $totalAmount += $subtotal;
 
                 $itemPackagingId = null;
@@ -242,7 +281,7 @@ class CustomerController extends Controller
                         throw new \Exception("Please select a packaging size for {$menu->name}.");
                     }
 
-                    $packaging = \App\Models\TakeawayPackaging::where('id', $item['packaging_id'])->where('is_active', true)->first();
+                    $packaging = TakeawayPackaging::where('id', $item['packaging_id'])->where('is_active', true)->first();
                     if ($packaging) {
                         $itemPackagingId = $packaging->id;
                         $itemPackagingPrice = $packaging->price;
@@ -253,11 +292,11 @@ class CustomerController extends Controller
                 }
 
                 $orderItemsData[] = [
-                    'menu_id'  => $menu->id,
-                    'quantity' => $item['quantity'],
-                    'price'    => $menu->price,
-                    'subtotal' => $subtotal,
-                    'packaging_id' => $itemPackagingId,
+                    'menu_id'         => $menu->id,
+                    'quantity'        => $item['quantity'],
+                    'price'           => (float) $menu->price, // always store raw base price
+                    'subtotal'        => $subtotal,
+                    'packaging_id'    => $itemPackagingId,
                     'packaging_price' => $itemPackagingPrice,
                 ];
             }
@@ -270,7 +309,7 @@ class CustomerController extends Controller
             $freeDeliveryDiscount = null;
 
             if ($cart && $cart->discount_code) {
-                $menuDiscount = \App\Models\Discount::where('code', $cart->discount_code)
+                $menuDiscount = Discount::where('code', $cart->discount_code)
                     ->where('discount_type', 'menu')
                     ->first();
 
@@ -285,7 +324,7 @@ class CustomerController extends Controller
 
             // Auto-apply free_delivery discount for delivery orders
             if ($validated['order_type'] === 'delivery') {
-                $freeDeliveryQuery = \App\Models\Discount::where('discount_type', 'free_delivery')
+                $freeDeliveryQuery = Discount::where('discount_type', 'free_delivery')
                     ->where('is_active', true)
                     ->where('start_date', '<=', now())
                     ->where(function ($q) {
@@ -317,12 +356,12 @@ class CustomerController extends Controller
 
             if ($taxableAmount > 0) {
                 foreach ($activeTaxes as $tax) {
-                    $taxValue = 0;
-                    if ($tax->is_inclusive) {
-                        // Inclusive tax is extracted from the amount
+                    if ($taxMode === 'inclusive') {
+                        // Tax is already baked into the customer-facing price.
+                        // Extract it back out for audit — does NOT add to final amount.
                         $taxValue = $taxableAmount - ($taxableAmount / (1 + ($tax->rate / 100)));
                     } else {
-                        // Exclusive tax is added on top of the amount
+                        // Exclusive: tax is added on top.
                         $taxValue = $taxableAmount * ($tax->rate / 100);
                         $totalExclusiveTax += $taxValue;
                     }
@@ -331,8 +370,9 @@ class CustomerController extends Controller
 
                     if (! isset($taxDetails[$tax->name])) {
                         $taxDetails[$tax->name] = [
-                            'rate' => (float) $tax->rate,
-                            'type' => $tax->type,
+                            'rate'   => (float) $tax->rate,
+                            'type'   => $tax->type,
+                            'mode'   => $taxMode,
                             'amount' => 0,
                         ];
                     }
@@ -345,7 +385,7 @@ class CustomerController extends Controller
                 $detail['amount'] = round($detail['amount'], 2);
             }
 
-            $totalTaxAmount = round($totalTaxAmount, 2);
+            $totalTaxAmount    = round($totalTaxAmount, 2);
             $totalExclusiveTax = round($totalExclusiveTax, 2);
 
             // Handle delivery address (must happen before zone fee lookup)
@@ -355,7 +395,7 @@ class CustomerController extends Controller
 
             if ($validated['order_type'] === 'delivery') {
                 if ($isCustomer && ! empty($validated['address_id'])) {
-                    $address = \App\Models\Address::where('id', $validated['address_id'])
+                    $address = Address::where('id', $validated['address_id'])
                         ->where('user_id', $user->id)
                         ->firstOrFail();
                     $validated['delivery_zone_id'] = $address->zone_id;
@@ -368,7 +408,7 @@ class CustomerController extends Controller
             $deliveryFee = 0;
             $deliveryZoneId = null;
             if ($validated['order_type'] === 'delivery') {
-                $zone = \App\Models\Zone::findOrFail($validated['delivery_zone_id']);
+                $zone = Zone::findOrFail($validated['delivery_zone_id']);
 
                 if (! $zone->is_active) {
                     throw new \Exception("Delivery is not currently available in the selected zone: {$zone->name}.");
@@ -386,14 +426,16 @@ class CustomerController extends Controller
                 }
             }
 
+            // Inclusive tax is already in totalAmount (customer paid it as part of price).
+            // Exclusive tax is added on top.
             $finalAmount = $totalAmount - $discountAmount + $totalExclusiveTax + $deliveryFee + $takeawayAmount;
 
             // Get customer details
-            $defaultCustomer = \App\Models\User::where('email', 'eatwella@gmail.com')->first();
+            $defaultCustomer = User::where('email', 'eatwella@gmail.com')->first();
 
             if ($isAttendant && ! empty($validated['customer_user_id'])) {
                 // Staff linked to an existing customer
-                $linkedCustomer = \App\Models\User::findOrFail($validated['customer_user_id']);
+                $linkedCustomer = User::findOrFail($validated['customer_user_id']);
                 $customerName   = $linkedCustomer->name;
                 $customerEmail  = $linkedCustomer->email;
                 $customerPhone  = $linkedCustomer->phone;

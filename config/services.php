@@ -36,8 +36,8 @@ return [
     ],
 
     'paystack' => [
-        'public_key'   => env('PAYSTACK_PUBLIC_KEY'),
-        'secret_key'   => env('PAYSTACK_SECRET_KEY'),
+        'public_key'   => env('PAYSTACK_PUBLIC_KEY_EATWELLA'),
+        'secret_key'   => env('PAYSTACK_SECRET_KEY_EATWELLA'),
         'split_code'   => env('PAYSTACK_SPLIT_CODE'),
         'callback_url' => env('PAYSTACK_CALLBACK_URL'),
     ],

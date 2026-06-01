@@ -76,6 +76,7 @@ Route::post('/discounts/validate', [DiscountController::class, 'validateCode']);
 
 // Taxes
 Route::get('/taxes', [TaxController::class, 'list']);
+Route::get('/tax-mode', [SettingsController::class, 'getTaxMode']);
 
 // Category
 Route::get('/categories', [CategoryController::class, 'index']);
@@ -149,6 +150,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/admin/careers/openings/{opening}', [CareerOpeningController::class, 'destroy']);
     Route::get('/admin/settings', [SettingsController::class, 'index']);
     Route::put('/admin/settings', [SettingsController::class, 'update']);
+    Route::get('/admin/tax-mode', [SettingsController::class, 'getTaxMode']);
+    Route::put('/admin/tax-mode', [SettingsController::class, 'setTaxMode']);
     Route::put('/admin/availability-hours', [SettingsController::class, 'setAvailabilityHours']);
     Route::get('/admin/loyalty', [SettingsController::class, 'getLoyaltySettings']);
     Route::put('/admin/loyalty', [SettingsController::class, 'updateLoyaltySettings']);

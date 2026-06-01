@@ -103,4 +103,29 @@ class SettingsController extends Controller
         $hours = $value ? json_decode($value, true) : [];
         return response()->json(['availability_hours' => $hours]);
     }
+
+    public function getTaxMode(Request $request)
+    {
+        // if ($response = $this->requireRole($request, ['admin'])) {
+        //     return $response;
+        // }
+
+        $mode = Setting::where('key', 'tax_mode')->value('value') ?? 'exclusive';
+        return response()->json(['tax_mode' => $mode]);
+    }
+
+    public function setTaxMode(Request $request)
+    {
+        if ($response = $this->requireRole($request, ['admin'])) {
+            return $response;
+        }
+
+        $validated = $request->validate([
+            'tax_mode' => 'required|in:exclusive,inclusive',
+        ]);
+
+        Setting::updateOrCreate(['key' => 'tax_mode'], ['value' => $validated['tax_mode']]);
+
+        return response()->json(['message' => 'Tax mode updated.', 'tax_mode' => $validated['tax_mode']]);
+    }
 }

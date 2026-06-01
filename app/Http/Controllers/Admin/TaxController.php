@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Setting;
 use App\Models\Tax;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -32,9 +33,13 @@ class TaxController extends Controller
      */
     public function list(Request $request)
     {
-        $query = Tax::where('is_active', true);
+        $taxes    = Tax::where('is_active', true)->get();
+        $tax_mode = Setting::where('key', 'tax_mode')->value('value') ?? 'exclusive';
 
-        return $query->get();
+        return response()->json([
+            'tax_mode' => $tax_mode,
+            'taxes'    => $taxes,
+        ]);
     }
 
     /**
@@ -58,15 +63,21 @@ class TaxController extends Controller
             'is_active' => 'boolean'
         ]);
 
+        $isActive = $validated['is_active'] ?? true;
+
+        if ($isActive) {
+            Tax::where('is_active', true)->update(['is_active' => false]);
+        }
+
         $tax = Tax::create([
-            'name' => $validated['name'],
-            'type' => $validated['type'],
-            'description' => $validated['description'] ?? null,
-            'rate' => $validated['rate'],
-            'priority' => $validated['priority'],
+            'name'         => $validated['name'],
+            'type'         => $validated['type'],
+            'description'  => $validated['description'] ?? null,
+            'rate'         => $validated['rate'],
+            'priority'     => $validated['priority'],
             'is_inclusive' => $validated['is_inclusive'],
-            'branches' => $validated['branches'] ?? [],
-            'is_active' => $validated['is_active'] ?? true,
+            'branches'     => $validated['branches'] ?? [],
+            'is_active'    => $isActive,
         ]);
 
         return response()->json($tax, 201);
@@ -142,12 +153,17 @@ class TaxController extends Controller
             return $response;
         }
 
-        $tax->is_active = !$tax->is_active;
+        if (! $tax->is_active) {
+            // Activating this tax — deactivate all others first
+            Tax::where('id', '!=', $tax->id)->where('is_active', true)->update(['is_active' => false]);
+        }
+
+        $tax->is_active = ! $tax->is_active;
         $tax->save();
 
         return response()->json([
             'message' => 'Tax status updated successfully',
-            'tax' => $tax
+            'tax'     => $tax,
         ]);
     }
 }

@@ -5,20 +5,35 @@ namespace App\Http\Controllers;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Menu;
+use App\Models\Setting;
+use App\Models\Tax;
 use Illuminate\Http\Request;
 
 class CartController extends Controller
 {
-    /**
-     * Get the cart ID from X-Cart-ID header.
-     */
     protected function getCartId(Request $request)
     {
-        // If user is authenticated, use user_id, otherwise use X-Cart-ID header
         if ($request->user()) {
-            return null; // Will use user_id instead
+            return null;
         }
         return $request->header('X-Cart-ID');
+    }
+
+    private function applyInclusivePriceToCart($cart)
+    {
+        $mode = Setting::where('key', 'tax_mode')->value('value') ?? 'exclusive';
+        if ($mode !== 'inclusive') return $cart;
+
+        $rate = Tax::where('is_active', true)->sum('rate');
+        $multiplier = 1 + ((float) $rate / 100);
+
+        foreach ($cart->items as $item) {
+            if ($item->menu) {
+                $item->menu->price = round((float) $item->menu->price * $multiplier, 2);
+            }
+        }
+
+        return $cart;
     }
 
     /**
@@ -42,7 +57,7 @@ class CartController extends Controller
             return response()->json(['items' => []]);
         }
 
-        return response()->json($cart);
+        return response()->json($this->applyInclusivePriceToCart($cart));
     }
 
     /**
@@ -90,7 +105,7 @@ class CartController extends Controller
             ]);
         }
 
-        return response()->json($cart->load('items.menu', 'items.packaging'), 201);
+        return response()->json($this->applyInclusivePriceToCart($cart->load('items.menu', 'items.packaging')), 201);
     }
 
     /**
@@ -137,7 +152,7 @@ class CartController extends Controller
             $item->update($updateData);
         }
 
-        return response()->json($cart->load('items.menu', 'items.packaging'));
+        return response()->json($this->applyInclusivePriceToCart($cart->load('items.menu', 'items.packaging')));
     }
 
     /**
@@ -169,7 +184,7 @@ class CartController extends Controller
 
         $item->delete();
 
-        return response()->json($cart->load('items.menu', 'items.packaging'));
+        return response()->json($this->applyInclusivePriceToCart($cart->load('items.menu', 'items.packaging')));
     }
 
 

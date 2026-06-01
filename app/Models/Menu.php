@@ -27,6 +27,7 @@ class Menu extends Model
         'requires_takeaway'  => 'boolean',
         'is_available'       => 'boolean',
         'stock_quantity'     => 'integer',
+        'price'              => 'decimal:2',
     ];
 
     // Accessor to get full image URLs

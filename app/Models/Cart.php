@@ -27,7 +27,7 @@ class Cart extends Model
     public function getSubtotalAttribute()
     {
         return $this->items->sum(function ($item) {
-            return $item->menu->price * $item->quantity;
+            return (float) $item->menu->price * $item->quantity;
         });
     }
 
