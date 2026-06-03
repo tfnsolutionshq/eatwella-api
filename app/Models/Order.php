@@ -43,6 +43,7 @@ class Order extends Model
         'takeaway_amount',
         'delivery_proof_image',
         'delivery_note',
+        'customer_note',
         'delivery_zone_id',
         'completed_by_id',
         'sent_to_kitchen_by_id',
@@ -141,6 +142,11 @@ class Order extends Model
     public function review()
     {
         return $this->hasOne(Review::class);
+    }
+
+    public function ignoredByRiders()
+    {
+        return $this->belongsToMany(User::class, 'rider_ignored_orders')->withTimestamps();
     }
 
     public function deductItemsStock(): void

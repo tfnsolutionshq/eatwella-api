@@ -4,8 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\Order;
-use App\Models\Setting;
-use App\Models\Tax;
 use App\Services\LoyaltyService;
 use App\Services\NewUserDiscountService;
 use App\Mail\WelcomeEmail;
@@ -63,15 +61,17 @@ class CustomerAuthController extends Controller
     public function login(Request $request)
     {
         $request->validate([
-            'email' => 'required|email',
+            'login'    => 'required|string',
             'password' => 'required',
         ]);
 
-        $user = User::where('email', $request->email)->first();
+        $field = filter_var($request->login, FILTER_VALIDATE_EMAIL) ? 'email' : 'phone';
+
+        $user = User::where($field, $request->login)->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
             throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
+                'login' => ['The provided credentials are incorrect.'],
             ]);
         }
 
@@ -146,6 +146,31 @@ class CustomerAuthController extends Controller
         ]);
     }
 
+    public function activeOrders(Request $request)
+    {
+        if ($response = $this->requireRole($request, ['customer'])) {
+            return $response;
+        }
+
+        $orders = Order::where('user_id', $request->user()->id)
+            ->whereNotIn('status', ['completed', 'cancelled'])
+            ->withSum('orderItems as total_items', 'quantity')
+            ->latest()
+            ->paginate($request->get('per_page', 10), ['id', 'order_number', 'status', 'final_amount', 'user_id']);
+
+        $orders->getCollection()->transform(fn($order) => [
+            'id'           => $order->id,
+            'order_number' => $order->order_number,
+            'status'       => $order->status,
+            'total_items'  => (int) $order->total_items,
+            'total_amount' => (float) $order->final_amount,
+        ]);
+
+        return response()->json($orders);
+    }
+
+
+
     public function recentOrders(Request $request)
     {
         if ($response = $this->requireRole($request, ['customer'])) {
@@ -157,24 +182,6 @@ class CustomerAuthController extends Controller
             ->with(['orderItems.menu', 'orderItems.packaging', 'invoice', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name'])
             ->latest()
             ->paginate($perPage);
-
-        $orders->getCollection()->transform(function ($order) {
-            $order->makeVisible('delivery_pin');
-
-            $taxMode     = Setting::where('key', 'tax_mode')->value('value') ?? 'exclusive';
-            $activeTaxes = Tax::where('is_active', true)->get();
-
-            if ($taxMode === 'inclusive' && $activeTaxes->isNotEmpty()) {
-                $totalRate = $activeTaxes->sum(fn($t) => (float) $t->rate);
-                $order->orderItems->each(function ($item) use ($totalRate) {
-                    if ($item->menu) {
-                        $item->menu->price = round((float) $item->menu->price * (1 + $totalRate / 100), 2);
-                    }
-                });
-            }
-
-            return $order;
-        });
 
         return response()->json($orders);
     }

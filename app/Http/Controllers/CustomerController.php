@@ -170,12 +170,13 @@ class CustomerController extends Controller
         }
 
         $rules = [
-            'order_type'   => 'required|in:dine,pickup,delivery',
-            'payment_type' => $isAttendant ? 'nullable|in:cash,pos,transfer,gateway,loyalty_points' : 'required|in:cash,pos,transfer,gateway,loyalty_points',
-            'items'        => 'nullable|array',
+            'order_type'    => 'required|in:dine,pickup,delivery',
+            'payment_type'  => $isAttendant ? 'nullable|in:cash,pos,transfer,gateway,loyalty_points' : 'required|in:cash,pos,transfer,gateway,loyalty_points',
+            'items'         => 'nullable|array',
             'items.*.menu_id'      => 'required_with:items|exists:menus,id',
             'items.*.quantity'     => 'required_with:items|integer|min:1',
             'items.*.packaging_id' => 'nullable|exists:takeaway_packagings,id',
+            'customer_note' => 'nullable|string|max:500',
         ];
 
         // Staff can link order to an existing customer and specify post-create action
@@ -491,6 +492,7 @@ class CustomerController extends Controller
                     'final_amount'         => $finalAmount,
                     'status'               => 'pending',
                     'delivery_pin'         => $deliveryPin,
+                    'customer_note'        => $validated['customer_note'] ?? null,
                     'expires_at'           => null,
                 ]);
 
@@ -606,6 +608,7 @@ class CustomerController extends Controller
                 'final_amount' => $finalAmount,
                 'status' => $orderStatus,
                 'delivery_pin' => $deliveryPin,
+                'customer_note' => $validated['customer_note'] ?? null,
                 'expires_at' => $expiresAt,
             ]);
 

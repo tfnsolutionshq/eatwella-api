@@ -26,6 +26,11 @@ class AuthController extends Controller
                 return response()->json(['message' => 'Your account has been suspended.'], 403);
             }
 
+            if ($user->role === 'delivery_agent' && ! $user->is_activated) {
+                Auth::logout();
+                return response()->json(['message' => 'Your account is not activated. Please check your email for the activation code.'], 403);
+            }
+
             $token = $user->createToken('admin-token')->plainTextToken;
 
             return response()->json(['token' => $token, 'user' => $user]);

@@ -23,7 +23,7 @@ use App\Http\Controllers\MenuController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\RecommendationController;
-use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\RiderApplicationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -32,6 +32,11 @@ use Illuminate\Support\Facades\Route;
 | API Routes
 |--------------------------------------------------------------------------
 */
+
+use App\Http\Controllers\ReviewController;
+
+Route::post('/rider/apply', [RiderApplicationController::class, 'apply']);
+Route::post('/rider/activate', [RiderApplicationController::class, 'activate']);
 
 // Public Routes
 Route::post('/login', [AuthController::class, 'login']);
@@ -107,6 +112,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/profile', [CustomerAuthController::class, 'updateProfile']);
         Route::get('/overview', [CustomerAuthController::class, 'overview']);
         Route::get('/orders', [CustomerAuthController::class, 'recentOrders']);
+        Route::get('/orders/active', [CustomerAuthController::class, 'activeOrders']);
 
         Route::post('/reviews', [ReviewController::class, 'store']);
 
@@ -121,6 +127,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/loyalty', [CustomerAuthController::class, 'loyaltyInfo']);
         Route::post('/logout', [CustomerAuthController::class, 'logout']);
     });
+
+    // Rider Applications
+    Route::get('/admin/rider-applications', [RiderApplicationController::class, 'index']);
+    Route::post('/admin/rider-applications/{application}/approve', [RiderApplicationController::class, 'approve']);
+    Route::post('/admin/rider-applications/{application}/reject', [RiderApplicationController::class, 'reject']);
 
     // Admin Resources
     Route::apiResource('admin/categories', CategoryController::class);
@@ -189,7 +200,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/supervisor/orders/{order}/assign-delivery-agent', [OrderController::class, 'assignDeliveryAgent']);
     Route::post('/supervisor/orders/{order}/complete', [OrderController::class, 'supervisorCompleteDelivery']);
     Route::put('/supervisor/orders/{order}', [OrderController::class, 'update']);
-    Route::get('/delivery-agent/orders', [OrderController::class, 'deliveryAgentOrders']);
+    Route::get('/delivery-agent/overview', [DeliveryAgentController::class, 'overview']);
+    Route::get('/delivery-agent/orders', [DeliveryAgentController::class, 'getOrders']);
+    Route::post('/delivery-agent/orders/{order}/accept', [DeliveryAgentController::class, 'acceptOrder']);
+    Route::post('/delivery-agent/orders/{order}/ignore', [DeliveryAgentController::class, 'ignoreOrder']);
     Route::get('/delivery-agent/orders/{order}', [OrderController::class, 'deliveryAgentShow']);
     Route::post('/delivery-agent/orders/{order}/complete', [OrderController::class, 'completeDelivery']);
 

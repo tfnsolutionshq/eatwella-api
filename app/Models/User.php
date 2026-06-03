@@ -29,6 +29,7 @@ class User extends Authenticatable
         'birth_month',
         'loyalty_points',
         'is_suspended',
+        'is_activated',
     ];
 
     /**
@@ -54,6 +55,7 @@ class User extends Authenticatable
             'birthday' => 'date',
             'birth_month' => 'integer',
             'is_suspended' => 'boolean',
+            'is_activated' => 'boolean',
         ];
     }
 
