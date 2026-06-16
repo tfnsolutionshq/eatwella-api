@@ -24,6 +24,7 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'outlet_id',
         'phone',
         'birthday',
         'birth_month',
@@ -92,5 +93,23 @@ class User extends Authenticatable
     public function bankDetails()
     {
         return $this->hasMany(\App\Models\DeliveryAgentBankDetail::class);
+    }
+
+    // Single outlet for attendant, supervisor, kitchen, store_keeper
+    public function outlet()
+    {
+        return $this->belongsTo(Outlet::class);
+    }
+
+    // Many outlets for delivery agents (via outlet_user pivot)
+    public function outlets()
+    {
+        return $this->belongsToMany(Outlet::class, 'outlet_user');
+    }
+
+    // Cities a delivery agent is assigned to
+    public function cities()
+    {
+        return $this->belongsToMany(City::class, 'delivery_agent_cities');
     }
 }

@@ -66,9 +66,10 @@ class CartController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'menu_id' => 'required|exists:menus,id',
-            'quantity' => 'required|integer|min:1',
+            'menu_id'      => 'required|exists:menus,id',
+            'quantity'     => 'required|integer|min:1',
             'packaging_id' => 'nullable|exists:takeaway_packagings,id',
+            'outlet_id'    => 'nullable|uuid|exists:outlets,id',
         ]);
 
         $menu = Menu::findOrFail($validated['menu_id']);
@@ -76,7 +77,6 @@ class CartController extends Controller
             return response()->json(['message' => 'Menu unavailable'], 422);
         }
 
-        // Check if user is authenticated via Bearer token
         $user = auth('sanctum')->user();
 
         if ($user) {
@@ -89,6 +89,17 @@ class CartController extends Controller
             $cart = Cart::firstOrCreate(['session_id' => $cartId]);
         }
 
+        $outletChanged = false;
+
+        if (! empty($validated['outlet_id'])) {
+            $newOutletId = $validated['outlet_id'];
+            if ($cart->outlet_id && (string) $cart->outlet_id !== (string) $newOutletId) {
+                $outletChanged = true;
+            }
+            $cart->outlet_id = $newOutletId;
+            $cart->save();
+        }
+
         $cartItem = $cart->items()
             ->where('menu_id', $validated['menu_id'])
             ->where('packaging_id', $validated['packaging_id'] ?? null)
@@ -98,14 +109,22 @@ class CartController extends Controller
             $cartItem->quantity += $validated['quantity'];
             $cartItem->save();
         } else {
-            $cartItem = $cart->items()->create([
-                'menu_id' => $validated['menu_id'],
-                'quantity' => $validated['quantity'],
+            $cart->items()->create([
+                'menu_id'      => $validated['menu_id'],
+                'quantity'     => $validated['quantity'],
                 'packaging_id' => $validated['packaging_id'] ?? null,
             ]);
         }
 
-        return response()->json($this->applyInclusivePriceToCart($cart->load('items.menu', 'items.packaging')), 201);
+        $cart->load('items.menu', 'items.packaging');
+        $this->applyInclusivePriceToCart($cart);
+
+        $data = $cart->toArray();
+
+        return response()->json(
+            $outletChanged ? array_merge($data, ['outlet_changed' => true]) : $data,
+            201
+        );
     }
 
     /**
@@ -114,8 +133,9 @@ class CartController extends Controller
     public function update(Request $request, $itemId)
     {
         $validated = $request->validate([
-            'quantity' => 'sometimes|integer|min:1',
+            'quantity'     => 'sometimes|integer|min:1',
             'packaging_id' => 'sometimes|nullable|exists:takeaway_packagings,id',
+            'outlet_id'    => 'sometimes|nullable|uuid|exists:outlets,id',
         ]);
 
         $user = auth('sanctum')->user();
@@ -132,6 +152,17 @@ class CartController extends Controller
 
         if (!$cart) {
             return response()->json(['message' => 'Cart not found'], 404);
+        }
+
+        $outletChanged = false;
+
+        if (! empty($validated['outlet_id'])) {
+            $newOutletId = $validated['outlet_id'];
+            if ($cart->outlet_id && (string) $cart->outlet_id !== (string) $newOutletId) {
+                $outletChanged = true;
+            }
+            $cart->outlet_id = $newOutletId;
+            $cart->save();
         }
 
         $item = $cart->items()->where('id', $itemId)->first();
@@ -152,7 +183,14 @@ class CartController extends Controller
             $item->update($updateData);
         }
 
-        return response()->json($this->applyInclusivePriceToCart($cart->load('items.menu', 'items.packaging')));
+        $cart->load('items.menu', 'items.packaging');
+        $this->applyInclusivePriceToCart($cart);
+
+        $data = $cart->toArray();
+
+        return response()->json(
+            $outletChanged ? array_merge($data, ['outlet_changed' => true]) : $data
+        );
     }
 
     /**

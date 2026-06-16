@@ -3,14 +3,17 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Mail\StaffWelcomeEmail;
+use App\Models\City;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 
 class UserController extends Controller
 {
     public function index(Request $request)
     {
-        if ($response = $this->requireRole($request, ['admin', 'attendant', 'supervisor'])) {
+        if ($response = $this->requireRole($request, ['admin', 'attendant'])) {
             return $response;
         }
         $query = User::with('addresses')
@@ -52,19 +55,31 @@ class UserController extends Controller
             return $response;
         }
 
+        $singleOutletRoles = ['attendant', 'supervisor', 'kitchen', 'store_keeper'];
+
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:6',
-            'role' => 'required|in:attendant,supervisor,delivery_agent,kitchen,store_keeper',
+            'name'      => 'required|string|max:255',
+            'email'     => 'required|email|unique:users,email',
+            'password'  => 'nullable|string|min:6',
+            'role'      => 'required|in:attendant,supervisor,delivery_agent,kitchen,store_keeper',
+            'outlet_id' => [
+                in_array($request->role, $singleOutletRoles) ? 'required' : 'nullable',
+                'uuid',
+                'exists:outlets,id',
+            ],
         ]);
 
+        $plainPassword = $validated['password'] ?? \Illuminate\Support\Str::password(12);
+
         $user = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => $validated['password'],
-            'role' => $validated['role'],
+            'name'      => $validated['name'],
+            'email'     => $validated['email'],
+            'password'  => $plainPassword,
+            'role'      => $validated['role'],
+            'outlet_id' => $validated['outlet_id'] ?? null,
         ]);
+
+        Mail::to($user->email)->send(new StaffWelcomeEmail($user->load('outlet'), $plainPassword));
 
         return response()->json($user, 201);
     }
@@ -133,11 +148,12 @@ class UserController extends Controller
         }
 
         $validated = $request->validate([
-            'name'     => 'nullable|string|max:255',
-            'phone'    => 'nullable|string|max:20',
-            'birthday' => 'nullable|date',
-            'email'    => 'nullable|email|unique:users,email,' . $user->id,
-            'role'     => 'nullable|in:customer,attendant,supervisor,delivery_agent,kitchen,admin,store_keeper',
+            'name'      => 'nullable|string|max:255',
+            'phone'     => 'nullable|string|max:20',
+            'birthday'  => 'nullable|date',
+            'email'     => 'nullable|email|unique:users,email,' . $user->id,
+            'role'      => 'nullable|in:customer,attendant,supervisor,delivery_agent,kitchen,admin,store_keeper',
+            'outlet_id' => 'nullable|uuid|exists:outlets,id',
         ]);
 
         $user->update(array_filter($validated, fn($v) => !is_null($v)));
@@ -146,5 +162,60 @@ class UserController extends Controller
             'message' => 'User profile updated successfully',
             'user'    => $user->fresh(),
         ]);
+    }
+
+    // -------------------------------------------------------------------------
+    // Delivery Agent City Management
+    // -------------------------------------------------------------------------
+
+    public function listCities(Request $request, User $user)
+    {
+        if ($response = $this->requireRole($request, ['admin'])) {
+            return $response;
+        }
+
+        if ($user->role !== 'delivery_agent') {
+            return response()->json(['message' => 'User is not a delivery agent.'], 422);
+        }
+
+        return response()->json($user->cities()->with('state')->get());
+    }
+
+    public function assignCities(Request $request, User $user)
+    {
+        if ($response = $this->requireRole($request, ['admin'])) {
+            return $response;
+        }
+
+        if ($user->role !== 'delivery_agent') {
+            return response()->json(['message' => 'User is not a delivery agent.'], 422);
+        }
+
+        $validated = $request->validate([
+            'city_ids'   => 'required|array|min:1',
+            'city_ids.*' => 'required|integer|exists:cities,id',
+        ]);
+
+        $user->cities()->syncWithoutDetaching($validated['city_ids']);
+
+        return response()->json([
+            'message' => 'Cities assigned successfully.',
+            'cities'  => $user->cities()->with('state')->get(),
+        ]);
+    }
+
+    public function removeCity(Request $request, User $user, City $city)
+    {
+        if ($response = $this->requireRole($request, ['admin'])) {
+            return $response;
+        }
+
+        if ($user->role !== 'delivery_agent') {
+            return response()->json(['message' => 'User is not a delivery agent.'], 422);
+        }
+
+        $user->cities()->detach($city->id);
+
+        return response()->json(['message' => 'City removed from delivery agent successfully.']);
     }
 }

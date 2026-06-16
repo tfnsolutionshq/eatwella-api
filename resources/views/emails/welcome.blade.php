@@ -2,7 +2,9 @@
 
 @section('title', 'Welcome to EatWella!')
 
-@section('heading', 'Welcome, {{ $user->name }}! 🎉')
+@section('heading')
+Welcome, {{ $user->name }}! 🎉
+@endsection
 @section('subheading', 'We\'re so glad you joined us')
 
 @section('content')

@@ -12,12 +12,16 @@ class Zone extends Model
         'is_active',
         'delivery_fee',
         'sort_order',
+        'latitude',
+        'longitude',
     ];
 
     protected $casts = [
-        'is_active' => 'boolean',
+        'is_active'    => 'boolean',
         'delivery_fee' => 'decimal:2',
-        'sort_order' => 'integer',
+        'sort_order'   => 'integer',
+        'latitude'     => 'float',
+        'longitude'    => 'float',
     ];
 
     public function city()

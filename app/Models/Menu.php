@@ -87,4 +87,14 @@ class Menu extends Model
                     ->withTimestamps()
                     ->orderByPivot('sort_order', 'asc');
     }
+
+    public function outletStock()
+    {
+        return $this->hasMany(OutletMenuStock::class);
+    }
+
+    public function stockForOutlet(string $outletId): ?OutletMenuStock
+    {
+        return $this->outletStock()->where('outlet_id', $outletId)->first();
+    }
 }

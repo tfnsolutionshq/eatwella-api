@@ -49,6 +49,7 @@ class Order extends Model
         'sent_to_kitchen_by_id',
         'sent_to_kitchen_at',
         'completed_at',
+        'outlet_id',
     ];
 
     protected $casts = [
@@ -147,6 +148,11 @@ class Order extends Model
     public function ignoredByRiders()
     {
         return $this->belongsToMany(User::class, 'rider_ignored_orders')->withTimestamps();
+    }
+
+    public function outlet()
+    {
+        return $this->belongsTo(Outlet::class);
     }
 
     public function deductItemsStock(): void

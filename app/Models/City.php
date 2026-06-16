@@ -17,4 +17,9 @@ class City extends Model
     {
         return $this->hasMany(Zone::class);
     }
+
+    public function outlets()
+    {
+        return $this->hasMany(Outlet::class);
+    }
 }

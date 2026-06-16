@@ -22,7 +22,14 @@ class OrderController extends Controller
         if ($response = $this->requireRole($request, ['admin', 'attendant'])) {
             return $response;
         }
+
         $query = Order::with(['orderItems.menu', 'orderItems.packaging', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name']);
+
+        if ($outlet = $this->outletContext($request)) {
+            $query->where('outlet_id', $outlet->id);
+        } elseif ($request->filled('outlet_id')) {
+            $query->where('outlet_id', $request->outlet_id);
+        }
 
         if ($request->has('status')) {
             $query->where('status', $request->status);
@@ -37,6 +44,12 @@ class OrderController extends Controller
     {
         if ($response = $this->requireRole($request, ['admin', 'attendant', 'kitchen'])) {
             return $response;
+        }
+
+        if ($outlet = $this->outletContext($request)) {
+            if ((string) $order->outlet_id !== (string) $outlet->id) {
+                return response()->json(['message' => 'Order not found'], 404);
+            }
         }
 
         return $order->load(['orderItems.menu', 'orderItems.packaging', 'invoice', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor', 'deliveryZone.city.state', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name']);
@@ -275,6 +288,10 @@ class OrderController extends Controller
 
         $query = Order::with(['orderItems.menu', 'orderItems.packaging', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor', 'completedBy', 'invoice']);
 
+        if ($outlet = $this->outletContext($request)) {
+            $query->where('outlet_id', $outlet->id);
+        }
+
         if ($request->has('status')) {
             $query->where('status', $request->status);
         }
@@ -314,6 +331,12 @@ class OrderController extends Controller
     {
         if ($response = $this->requireRole($request, ['supervisor'])) {
             return $response;
+        }
+
+        if ($outlet = $this->outletContext($request)) {
+            if ((string) $order->outlet_id !== (string) $outlet->id) {
+                return response()->json(['message' => 'Order not found'], 404);
+            }
         }
 
         return $order->load(['orderItems.menu', 'orderItems.packaging', 'invoice', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor', 'completedBy', 'deliveryZone.city.state']);
@@ -496,6 +519,10 @@ class OrderController extends Controller
         }
 
         $query = Order::with(['orderItems.menu', 'orderItems.packaging', 'invoice', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name']);
+
+        if ($outlet = $this->outletContext($request)) {
+            $query->where('outlet_id', $outlet->id);
+        }
 
         if ($request->has('status')) {
             $query->where('status', $request->status);

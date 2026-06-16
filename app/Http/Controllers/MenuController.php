@@ -168,7 +168,7 @@ class MenuController extends Controller
 
     public function inventoryLogs(Request $request, Menu $menu)
     {
-        if ($response = $this->requireRole($request, ['admin', 'supervisor'])) {
+        if ($response = $this->requireRole($request, ['admin'])) {
             return $response;
         }
 

@@ -30,11 +30,13 @@ class ZoneController extends Controller
         }
 
         $validated = $request->validate([
-            'city_id' => 'required|exists:cities,id',
-            'name' => 'required|string|max:150',
-            'is_active' => 'boolean',
+            'city_id'      => 'required|exists:cities,id',
+            'name'         => 'required|string|max:150',
+            'is_active'    => 'boolean',
             'delivery_fee' => 'numeric|min:0',
-            'sort_order' => 'integer',
+            'sort_order'   => 'integer',
+            'latitude'     => 'nullable|numeric|between:-90,90',
+            'longitude'    => 'nullable|numeric|between:-180,180',
         ]);
 
         $zone = Zone::create($validated);
@@ -49,10 +51,12 @@ class ZoneController extends Controller
         }
 
         $validated = $request->validate([
-            'name' => 'sometimes|required|string|max:150',
-            'is_active' => 'boolean',
+            'name'         => 'sometimes|required|string|max:150',
+            'is_active'    => 'boolean',
             'delivery_fee' => 'numeric|min:0',
-            'sort_order' => 'integer',
+            'sort_order'   => 'integer',
+            'latitude'     => 'nullable|numeric|between:-90,90',
+            'longitude'    => 'nullable|numeric|between:-180,180',
         ]);
 
         $zone->update($validated);

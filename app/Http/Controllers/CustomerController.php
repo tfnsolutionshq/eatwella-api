@@ -35,14 +35,33 @@ class CustomerController extends Controller
         return response()->json(['takeaway_price' => round($price, 2)]);
     }
 
-    private function checkAvailabilityHours(string $orderType = null): void
+    private function checkAvailabilityHours(string $orderType = null, ?string $outletId = null): void
     {
-        $hoursJson = Setting::where('key', 'availability_hours')->value('value');
-        if (!$hoursJson) return;
+        // Resolve hours: outlet override first, then global fallback
+        if ($outletId) {
+            $overrides = \App\Models\OutletAvailabilityHour::where('outlet_id', $outletId)->get();
+            if ($overrides->isNotEmpty()) {
+                $hours = $overrides->map(fn ($h) => [
+                    'day'         => $h->day,
+                    'enabled'     => $h->enabled,
+                    'open'        => $h->open,
+                    'close'       => $h->close,
+                    'order_types' => $h->order_types,
+                ])->toArray();
+                $this->assertWithinHours($hours, $orderType);
+                return;
+            }
+        }
 
+        $hoursJson = Setting::where('key', 'availability_hours')->value('value');
+        if (! $hoursJson) return;
         $hours = json_decode($hoursJson, true);
         if (empty($hours)) return;
+        $this->assertWithinHours($hours, $orderType);
+    }
 
+    private function assertWithinHours(array $hours, ?string $orderType): void
+    {
         $tz  = Setting::where('key', 'restaurant_timezone')->value('value') ?? 'Africa/Lagos';
         $now = \Carbon\Carbon::now($tz);
         $day = $now->format('l');
@@ -53,8 +72,8 @@ class CustomerController extends Controller
             abort(403, 'Restaurant is currently closed.');
         }
 
-        $open  = \Carbon\Carbon::createFromFormat('g:i A', $entry['open'],  $tz)->setDateFrom($now);
-        $close = \Carbon\Carbon::createFromFormat('g:i A', $entry['close'], $tz)->setDateFrom($now);
+        $open  = \Carbon\Carbon::parse($entry['open'],  $tz)->setDateFrom($now);
+        $close = \Carbon\Carbon::parse($entry['close'], $tz)->setDateFrom($now);
 
         if ($now->lt($open) || $now->gt($close)) {
             abort(403, 'Restaurant is currently closed.');
@@ -62,7 +81,7 @@ class CustomerController extends Controller
 
         if ($orderType) {
             $orderTypes = $entry['order_types'] ?? [];
-            $enabled = $orderTypes[$orderType] ?? true;
+            $enabled    = $orderTypes[$orderType] ?? true;
             if (! $enabled) {
                 abort(403, ucfirst($orderType) . ' orders are not available today.');
             }
@@ -94,24 +113,31 @@ class CustomerController extends Controller
             $query->where('name', 'like', '%'.$request->search.'%');
         }
 
+        $outletId    = $request->filled('outlet_id') ? $request->outlet_id : null;
         $paginated   = $query->paginate($request->get('per_page', 15));
         $taxMode     = $this->getTaxMode();
         $activeTaxes = Tax::where('is_active', true)->get();
 
-        if ($taxMode === 'inclusive' && $activeTaxes->isNotEmpty()) {
-            $totalRate = $activeTaxes->sum(fn($t) => (float) $t->rate);
-            $paginated->setCollection(
-                $paginated->getCollection()->map(function ($menu) use ($totalRate) {
+        $paginated->setCollection(
+            $paginated->getCollection()->map(function ($menu) use ($taxMode, $activeTaxes, $outletId) {
+                $totalRate = $activeTaxes->sum(fn($t) => (float) $t->rate);
+                if ($taxMode === 'inclusive' && $activeTaxes->isNotEmpty()) {
                     $menu->price = round($menu->price * (1 + $totalRate / 100), 2);
-                    return $menu;
-                })
-            );
-        }
+                }
+                if ($outletId) {
+                    $outletStock = \App\Models\OutletMenuStock::where('outlet_id', $outletId)
+                        ->where('menu_id', $menu->id)
+                        ->value('stock_quantity');
+                    $menu->stock_quantity = $outletStock ?? 0;
+                }
+                return $menu;
+            })
+        );
 
         return $paginated;
     }
 
-    public function showMenu(Menu $menu)
+    public function showMenu(Request $request, Menu $menu)
     {
         if (! $menu->is_available) {
             return response()->json(['message' => 'Menu unavailable'], 404);
@@ -146,6 +172,13 @@ class CustomerController extends Controller
             $menu->price = round($menu->price * (1 + $totalRate / 100), 2);
         }
 
+        if ($request->filled('outlet_id')) {
+            $outletStock = \App\Models\OutletMenuStock::where('outlet_id', $request->outlet_id)
+                ->where('menu_id', $menu->id)
+                ->value('stock_quantity');
+            $menu->stock_quantity = $outletStock ?? 0;
+        }
+
         return response()->json($menu);
     }
 
@@ -154,8 +187,24 @@ class CustomerController extends Controller
         $user = auth('sanctum')->user();
         $isStaff = $user && in_array(strtolower(trim($user->role)), ['attendant', 'admin', 'supervisor'], true);
 
+        // Resolve outlet from cart
+        $outletId = null;
+        if ($user) {
+            $cartForOutlet = Cart::where('user_id', $user->id)->first();
+        } else {
+            $cartIdHeader  = $request->header('X-Cart-ID');
+            $cartForOutlet = $cartIdHeader ? Cart::where('session_id', $cartIdHeader)->first() : null;
+        }
+        if ($cartForOutlet && $cartForOutlet->outlet_id) {
+            $outletId = $cartForOutlet->outlet_id;
+            $outlet   = \App\Models\Outlet::find($outletId);
+            if (! $outlet || ! $outlet->is_active) {
+                return response()->json(['message' => 'The selected outlet is not available.'], 422);
+            }
+        }
+
         if (!$isStaff) {
-            $this->checkAvailabilityHours($request->order_type);
+            $this->checkAvailabilityHours($request->order_type, $outletId);
         }
         if ($user) {
             $role = strtolower(trim($user->role));
@@ -213,7 +262,7 @@ class CustomerController extends Controller
 
         $validated = $request->validate($rules);
 
-        return DB::transaction(function () use ($validated, $request, $user, $isAttendant, $isCustomer) {
+        return DB::transaction(function () use ($validated, $request, $user, $isAttendant, $isCustomer, $outletId) {
             // Get items from cart or direct
             $itemsToProcess = [];
             $cart = null;
@@ -263,7 +312,18 @@ class CustomerController extends Controller
                 }
 
                 if ($menu->stock_quantity !== null && $menu->stock_quantity < $item['quantity']) {
-                    throw new \Exception("Insufficient stock for {$menu->name}. Only {$menu->stock_quantity} left.");
+                    // Check outlet stock if outlet context exists
+                    if ($outletId) {
+                        $outletStock = \App\Models\OutletMenuStock::where('outlet_id', $outletId)
+                            ->where('menu_id', $menu->id)
+                            ->first();
+                        $available = $outletStock ? $outletStock->stock_quantity : 0;
+                        if ($available < $item['quantity']) {
+                            throw new \Exception("Insufficient stock for {$menu->name} at this outlet. Only {$available} left.");
+                        }
+                    } else {
+                        throw new \Exception("Insufficient stock for {$menu->name}. Only {$menu->stock_quantity} left.");
+                    }
                 }
 
                 // Use inclusive price (tax baked in) if mode is inclusive
@@ -467,6 +527,10 @@ class CustomerController extends Controller
 
             // Staff save-for-later: no payment_type provided
             if ($isAttendant && empty($validated['payment_type'])) {
+                $deliveryPin = $validated['order_type'] === 'delivery'
+                    ? str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT)
+                    : null;
+
                 $order = Order::create([
                     'order_number'         => $orderNumber,
                     'user_id'              => $orderUserId,
@@ -494,6 +558,7 @@ class CustomerController extends Controller
                     'delivery_pin'         => $deliveryPin,
                     'customer_note'        => $validated['customer_note'] ?? null,
                     'expires_at'           => null,
+                    'outlet_id'            => $outletId ?? null,
                 ]);
 
                 foreach ($orderItemsData as $data) {
@@ -610,6 +675,7 @@ class CustomerController extends Controller
                 'delivery_pin' => $deliveryPin,
                 'customer_note' => $validated['customer_note'] ?? null,
                 'expires_at' => $expiresAt,
+                'outlet_id' => $outletId ?? null,
             ]);
 
             // Create Order Items
@@ -622,7 +688,27 @@ class CustomerController extends Controller
                 foreach ($orderItemsData as $data) {
                     $menu = Menu::find($data['menu_id']);
                     if ($menu) {
-                        $menu->deductStock($data['quantity'], $user?->id);
+                        if ($outletId) {
+                            $outletStock = \App\Models\OutletMenuStock::where('outlet_id', $outletId)
+                                ->where('menu_id', $menu->id)
+                                ->first();
+                            if ($outletStock) {
+                                $before = $outletStock->stock_quantity;
+                                $after  = max(0, $before - $data['quantity']);
+                                $outletStock->update(['stock_quantity' => $after]);
+                                \App\Models\InventoryLog::create([
+                                    'menu_id'          => $menu->id,
+                                    'user_id'          => $user?->id,
+                                    'type'             => 'deduction',
+                                    'quantity_before'  => $before,
+                                    'quantity_changed' => -$data['quantity'],
+                                    'quantity_after'   => $after,
+                                    'note'             => 'Order deduction',
+                                ]);
+                            }
+                        } else {
+                            $menu->deductStock($data['quantity'], $user?->id);
+                        }
                     }
                 }
             }

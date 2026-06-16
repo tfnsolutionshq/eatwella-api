@@ -97,11 +97,37 @@ class SettingsController extends Controller
         return response()->json(['message' => 'Loyalty settings updated successfully']);
     }
 
-    public function getAvailabilityHours()
+    public function getAvailabilityHours(Request $request)
     {
+        $outletId = $request->query('outlet_id');
+
+        if ($outletId) {
+            $overrides = \App\Models\OutletAvailabilityHour::where('outlet_id', $outletId)
+                ->get();
+
+            if ($overrides->isNotEmpty()) {
+                $hours = $overrides->map(fn ($h) => [
+                    'day'         => $h->day,
+                    'enabled'     => $h->enabled,
+                    'open'        => $h->open,
+                    'close'       => $h->close,
+                    'order_types' => $h->order_types,
+                ])->values()->toArray();
+
+                return response()->json([
+                    'availability_hours' => $hours,
+                    'source'            => 'outlet',
+                ]);
+            }
+        }
+
         $value = Setting::where('key', 'availability_hours')->value('value');
         $hours = $value ? json_decode($value, true) : [];
-        return response()->json(['availability_hours' => $hours]);
+
+        return response()->json([
+            'availability_hours' => $hours,
+            'source'            => 'global',
+        ]);
     }
 
     public function getTaxMode(Request $request)

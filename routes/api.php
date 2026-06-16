@@ -6,8 +6,12 @@ use App\Http\Controllers\Admin\DeleteController;
 use App\Http\Controllers\Admin\AnalyticsController;
 use App\Http\Controllers\Admin\CampaignController;
 use App\Http\Controllers\Admin\CareerOpeningController;
-use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Admin\OutletMenuStockController;
+use App\Http\Controllers\Admin\OutletController;
 use App\Http\Controllers\Admin\TaxController;
+use App\Http\Controllers\Supervisor\AvailabilityController;
+use App\Http\Controllers\Supervisor\StockController as SupervisorStockController;
+use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CareersController;
@@ -21,6 +25,7 @@ use App\Http\Controllers\KitchenController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\MenuController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\OutletController as PublicOutletController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\RecommendationController;
 use App\Http\Controllers\RiderApplicationController;
@@ -94,6 +99,11 @@ Route::get('/payment/callback', [PaymentController::class, 'paymentCallback']);
 Route::post('/payment/webhook', [PaymentController::class, 'webhook']);
 
 Route::get('/availability-hours', [SettingsController::class, 'getAvailabilityHours']);
+
+// Public Outlets
+Route::get('/outlets', [PublicOutletController::class, 'index']);
+Route::get('/outlets/{outlet}', [PublicOutletController::class, 'show']);
+Route::post('/outlets/resolve', [\App\Http\Controllers\OutletResolverController::class, 'resolve']);
 
 // Public Campaign Routes
 Route::get('/campaigns', [CampaignController::class, 'publicIndex']);
@@ -193,6 +203,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/attendant/orders', [OrderController::class, 'attendantOrders']);
     Route::get('/attendant/orders/{order}', [OrderController::class, 'show']);
 
+    // Supervisor — Outlet Dashboard & Availability Hours
+    Route::get('/supervisor/outlet', [AvailabilityController::class, 'outlet']);
+    Route::put('/supervisor/availability-hours', [AvailabilityController::class, 'update']);
+
     // Supervisor endpoints
     Route::get('/supervisor/delivery-agents', [OrderController::class, 'getDeliveryAgents']);
     Route::get('/supervisor/orders', [OrderController::class, 'supervisorIndex']);
@@ -266,4 +280,27 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/admin/cities', [LocationController::class, 'storeCity']);
     Route::put('/admin/cities/{city}', [LocationController::class, 'updateCity']);
     Route::delete('/admin/cities/{city}', [LocationController::class, 'destroyCity']);
+
+    // Delivery Agent City Management
+    Route::get('/admin/users/{user}/cities', [UserController::class, 'listCities']);
+    Route::post('/admin/users/{user}/cities', [UserController::class, 'assignCities']);
+    Route::delete('/admin/users/{user}/cities/{city}', [UserController::class, 'removeCity']);
+
+    // Outlet Management
+    Route::get('/admin/outlets', [OutletController::class, 'index']);
+    Route::post('/admin/outlets', [OutletController::class, 'store']);
+    Route::get('/admin/outlets/{outlet}', [OutletController::class, 'show']);
+    Route::put('/admin/outlets/{outlet}', [OutletController::class, 'update']);
+    Route::patch('/admin/outlets/{outlet}/toggle', [OutletController::class, 'toggle']);
+    Route::post('/admin/outlets/{outlet}/assign-supervisor', [OutletController::class, 'assignSupervisor']);
+    Route::post('/admin/outlets/{outlet}/assign-delivery-agent', [OutletController::class, 'assignDeliveryAgent']);
+    Route::delete('/admin/outlets/{outlet}/remove-user/{user}', [OutletController::class, 'removeUser']);
+
+    // Outlet Stock Management (Admin)
+    Route::get('/admin/outlets/{outlet}/stock', [OutletMenuStockController::class, 'index']);
+    Route::patch('/admin/outlets/{outlet}/menus/{menu}/stock', [OutletMenuStockController::class, 'update']);
+
+    // Outlet Stock Management (Supervisor & Store Keeper)
+    Route::patch('/supervisor/menus/{menu}/stock', [SupervisorStockController::class, 'update']);
+    Route::patch('/store-keeper/menus/{menu}/stock', [SupervisorStockController::class, 'update']);
 });

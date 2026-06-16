@@ -67,6 +67,8 @@ class LocationController extends Controller
         $validated = $request->validate([
             'state_id' => 'required|exists:states,id',
             'name'     => 'required|string|max:255',
+            'latitude'  => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
         ]);
 
         $city = City::create($validated);
@@ -79,8 +81,10 @@ class LocationController extends Controller
         if ($response = $this->requireRole($request, ['admin'])) return $response;
 
         $validated = $request->validate([
-            'state_id' => 'sometimes|exists:states,id',
-            'name'     => 'sometimes|string|max:255',
+            'state_id'  => 'sometimes|exists:states,id',
+            'name'      => 'sometimes|string|max:255',
+            'latitude'  => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
         ]);
 
         $city->update($validated);

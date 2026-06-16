@@ -10,7 +10,7 @@ class Cart extends Model
 {
     use HasUuids;
 
-    protected $fillable = ['session_id', 'user_id', 'discount_code'];
+    protected $fillable = ['session_id', 'user_id', 'discount_code', 'outlet_id'];
 
     protected $appends = ['subtotal', 'discount_amount', 'total', 'total_items'];
 
@@ -54,5 +54,10 @@ class Cart extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function outlet()
+    {
+        return $this->belongsTo(Outlet::class);
     }
 }

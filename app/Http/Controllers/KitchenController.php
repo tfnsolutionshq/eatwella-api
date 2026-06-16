@@ -17,12 +17,15 @@ class KitchenController extends Controller
             return $response;
         }
 
-        $orders = Order::with(['orderItems.menu', 'orderItems.packaging'])
+        $query = Order::with(['orderItems.menu', 'orderItems.packaging'])
             ->whereIn('status', ['in_kitchen', 'processing'])
-            ->orderBy('sent_to_kitchen_at', 'asc')
-            ->get();
+            ->orderBy('sent_to_kitchen_at', 'asc');
 
-        return response()->json($orders);
+        if ($outlet = $this->outletContext($request)) {
+            $query->where('outlet_id', $outlet->id);
+        }
+
+        return response()->json($query->get());
     }
 
     /**
@@ -39,9 +42,14 @@ class KitchenController extends Controller
             'order_ids.*' => 'required|uuid|exists:orders,id',
         ]);
 
-        $updatedCount = Order::whereIn('id', $validated['order_ids'])
-            ->where('status', 'in_kitchen')
-            ->update(['status' => 'processing', 'preparing_at' => now()]);
+        $query = Order::whereIn('id', $validated['order_ids'])
+            ->where('status', 'in_kitchen');
+
+        if ($outlet = $this->outletContext($request)) {
+            $query->where('outlet_id', $outlet->id);
+        }
+
+        $updatedCount = $query->update(['status' => 'processing', 'preparing_at' => now()]);
 
         return response()->json([
             'message' => "Successfully marked {$updatedCount} order(s) as preparing.",
@@ -63,9 +71,14 @@ class KitchenController extends Controller
             'order_ids.*' => 'required|uuid|exists:orders,id',
         ]);
 
-        $updatedCount = Order::whereIn('id', $validated['order_ids'])
-            ->whereIn('status', ['in_kitchen', 'processing'])
-            ->update(['status' => 'ready', 'ready_at' => now()]);
+        $query = Order::whereIn('id', $validated['order_ids'])
+            ->whereIn('status', ['in_kitchen', 'processing']);
+
+        if ($outlet = $this->outletContext($request)) {
+            $query->where('outlet_id', $outlet->id);
+        }
+
+        $updatedCount = $query->update(['status' => 'ready', 'ready_at' => now()]);
 
         return response()->json([
             'message' => "Successfully marked {$updatedCount} order(s) as ready.",
