@@ -198,6 +198,18 @@ class UserController extends Controller
 
         $user->cities()->syncWithoutDetaching($validated['city_ids']);
 
+        // Auto-assign outlet_id from the first active outlet found in any of the assigned cities
+        if (is_null($user->outlet_id)) {
+            $outlet = \App\Models\Outlet::whereIn('city_id', $validated['city_ids'])
+                ->where('is_active', true)
+                ->first();
+
+            if ($outlet) {
+                $user->update(['outlet_id' => $outlet->id]);
+                $outlet->deliveryAgents()->syncWithoutDetaching([$user->id]);
+            }
+        }
+
         return response()->json([
             'message' => 'Cities assigned successfully.',
             'cities'  => $user->cities()->with('state')->get(),

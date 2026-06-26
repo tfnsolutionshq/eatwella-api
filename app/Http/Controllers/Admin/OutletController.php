@@ -16,7 +16,7 @@ class OutletController extends Controller
         }
 
         $outlets = Outlet::with('city.state')
-            ->withCount('supervisors')
+            ->withCount(['supervisors', 'deliveryAgents'])
             ->latest()
             ->paginate($request->get('per_page', 15));
 
@@ -55,6 +55,8 @@ class OutletController extends Controller
             'deliveryAgents:id,name,email,phone,role',
             'availabilityHours',
         ]);
+
+        $outlet->loadCount(['supervisors', 'deliveryAgents']);
 
         return response()->json($outlet);
     }
@@ -132,30 +134,43 @@ class OutletController extends Controller
         }
 
         $validated = $request->validate([
-            'user_id' => 'required|uuid|exists:users,id',
+            'user_ids'   => 'required|array|min:1',
+            'user_ids.*' => 'required|uuid|exists:users,id',
         ]);
 
-        $agent = User::findOrFail($validated['user_id']);
+        $assigned = [];
 
-        if ($agent->role !== 'delivery_agent') {
-            return response()->json(['message' => 'User is not a delivery agent.'], 422);
+        foreach ($validated['user_ids'] as $userId) {
+            $agent = User::findOrFail($userId);
+
+            if ($agent->role !== 'delivery_agent') {
+                return response()->json(['message' => "User {$agent->name} is not a delivery agent."], 422);
+            }
+
+            $agentCityIds = $agent->cities()->pluck('cities.id');
+
+            if (! $agentCityIds->contains($outlet->city_id)) {
+                return response()->json([
+                    'message' => "{$agent->name} is not assigned to this outlet's city.",
+                ], 422);
+            }
+
+            $outlet->deliveryAgents()->syncWithoutDetaching([$agent->id]);
+
+            // Also ensure the agent's city list includes this outlet's city
+            $agent->cities()->syncWithoutDetaching([$outlet->city_id]);
+
+            // Set outlet_id on agent if not already set
+            if (is_null($agent->outlet_id)) {
+                $agent->update(['outlet_id' => $outlet->id]);
+            }
+
+            $assigned[] = $agent->only('id', 'name', 'email', 'role');
         }
-
-        // Validate agent is assigned to the outlet's city
-        $agentCityIds = $agent->cities()->pluck('cities.id');
-
-        if (! $agentCityIds->contains($outlet->city_id)) {
-            return response()->json([
-                'message' => 'Delivery agent is not assigned to this outlet\'s city.',
-            ], 422);
-        }
-
-        // Attach only if not already attached
-        $outlet->deliveryAgents()->syncWithoutDetaching([$agent->id]);
 
         return response()->json([
-            'message' => 'Delivery agent assigned successfully.',
-            'agent'   => $agent->only('id', 'name', 'email', 'role'),
+            'message'  => 'Delivery agent(s) assigned successfully.',
+            'assigned' => $assigned,
         ]);
     }
 

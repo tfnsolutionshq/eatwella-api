@@ -27,6 +27,11 @@ class AddressController extends Controller
 
         $address = $request->user()->addresses()->create($validated);
 
+        // Auto-set as default if it's the user's first address
+        if ($request->user()->addresses()->count() === 1) {
+            $address->update(['is_default' => true]);
+        }
+
         return response()->json([
             'message' => 'Address added successfully',
             'address' => $address->load('zone.city'),
@@ -54,6 +59,22 @@ class AddressController extends Controller
 
         return response()->json([
             'message' => 'Address updated successfully',
+            'address' => $address->load('zone.city'),
+        ]);
+    }
+
+    public function setDefault(Request $request, Address $address)
+    {
+        if ($address->user_id !== $request->user()->id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        // Unset all others, then set this one
+        $request->user()->addresses()->update(['is_default' => false]);
+        $address->update(['is_default' => true]);
+
+        return response()->json([
+            'message' => 'Default address updated.',
             'address' => $address->load('zone.city'),
         ]);
     }

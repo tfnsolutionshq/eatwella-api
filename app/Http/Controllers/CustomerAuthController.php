@@ -239,19 +239,35 @@ class CustomerAuthController extends Controller
 
     public function deleteAccount(Request $request)
     {
-        if ($response = $this->requireRole($request, ['customer'])) {
-            return $response;
-        }
         $request->validate(['password' => 'required']);
 
-        if (!Hash::check($request->password, $request->user()->password)) {
-            return response()->json(['message' => 'Password is incorrect'], 422);
+        if ($request->user()) {
+            // Authenticated
+            if ($request->user()->role !== 'customer') {
+                return response()->json(['message' => 'Forbidden'], 403);
+            }
+
+            if (! Hash::check($request->password, $request->user()->password)) {
+                return response()->json(['message' => 'Password is incorrect.'], 422);
+            }
+
+            $user = $request->user();
+        } else {
+            // Guest — email required
+            $request->validate(['email' => 'required|email']);
+
+            $user = User::where('email', $request->email)
+                        ->where('role', 'customer')
+                        ->first();
+
+            if (! $user || ! Hash::check($request->password, $user->password)) {
+                return response()->json(['message' => 'Invalid credentials.'], 401);
+            }
         }
 
-        $user = $request->user();
         $user->tokens()->delete();
         $user->delete();
 
-        return response()->json(['message' => 'Account deleted successfully']);
+        return response()->json(['message' => 'Account deleted successfully.']);
     }
 }

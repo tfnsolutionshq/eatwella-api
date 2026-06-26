@@ -49,6 +49,7 @@ Route::post('/login', [AuthController::class, 'login']);
 // Customer Auth Routes
 Route::post('/customer/register', [CustomerAuthController::class, 'register']);
 Route::post('/customer/login', [CustomerAuthController::class, 'login']);
+Route::delete('/customer/delete-account', [CustomerAuthController::class, 'deleteAccount']);
 
 // Customer / Guest Routes
 Route::get('/menus', [CustomerController::class, 'listMenus']);
@@ -129,10 +130,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/addresses', [AddressController::class, 'index']);
         Route::post('/addresses', [AddressController::class, 'store']);
         Route::put('/addresses/{address}', [AddressController::class, 'update']);
+        Route::patch('/addresses/{address}/default', [AddressController::class, 'setDefault']);
         Route::delete('/addresses/{address}', [AddressController::class, 'destroy']);
 
         Route::put('/change-password', [CustomerAuthController::class, 'changePassword']);
-        Route::delete('/delete-account', [CustomerAuthController::class, 'deleteAccount']);
 
         Route::get('/loyalty', [CustomerAuthController::class, 'loyaltyInfo']);
         Route::post('/logout', [CustomerAuthController::class, 'logout']);

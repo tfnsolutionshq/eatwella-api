@@ -14,6 +14,11 @@ class Address extends Model
         'zone_id',
         'street_address',
         'closest_landmark',
+        'is_default',
+    ];
+
+    protected $casts = [
+        'is_default' => 'boolean',
     ];
 
     public function user()
