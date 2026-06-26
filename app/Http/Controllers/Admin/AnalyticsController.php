@@ -88,19 +88,15 @@ class AnalyticsController extends Controller
         if ($response = $this->requireRole($request, ['admin'])) {
             return $response;
         }
-        $startDate = $request->query('start_date', Carbon::now()->subDays(7)->toDateString());
-        $endDate = $request->query('end_date', Carbon::now()->toDateString());
 
-        // We can use DB raw date formatting for grouping by day.
-        // Compatible with SQLite/MySQL usually via strftime or DATE().
-        // For broad compatibility let's use a simpler approach or raw expression carefully.
-
-        // SQLite uses strftime('%Y-%m-%d', created_at)
-        // MySQL uses DATE(created_at) or DATE_FORMAT(created_at, '%Y-%m-%d')
-
-        // Let's assume standard Laravel setup usually uses MySQL in production but SQLite in testing.
-        // Let's use DB::raw depending on driver or just fetch and map in PHP if dataset is small?
-        // But for analytics, DB grouping is better.
+        // Accept either month+year OR explicit start/end dates
+        if ($request->filled('month') && $request->filled('year')) {
+            $start = Carbon::createFromDate($request->year, $request->month, 1)->startOfMonth();
+            $end   = $start->copy()->endOfMonth();
+        } else {
+            $start = Carbon::parse($request->query('start_date', Carbon::now()->startOfMonth()->toDateString()))->startOfDay();
+            $end   = Carbon::parse($request->query('end_date',   Carbon::now()->toDateString()))->endOfDay();
+        }
 
         $driver = DB::connection()->getDriverName();
         $groupByExpression = $driver === 'sqlite'
@@ -111,21 +107,39 @@ class AnalyticsController extends Controller
             ? "AVG((julianday(completed_at) - julianday(created_at)) * 24 * 60)"
             : "AVG(TIMESTAMPDIFF(MINUTE, created_at, completed_at))";
 
-        $dailySales = Order::select(
+        $rows = Order::select(
                 DB::raw("$groupByExpression as date"),
                 DB::raw('SUM(final_amount) as revenue'),
                 DB::raw('COUNT(*) as orders_count'),
                 DB::raw("ROUND($avgCompletionExpression, 2) as avg_completion_minutes")
             )
-            ->whereBetween('created_at', [
-                Carbon::parse($startDate)->startOfDay(),
-                Carbon::parse($endDate)->endOfDay()
-            ])
+            ->whereBetween('created_at', [$start, $end])
             ->whereNotIn('status', ['cancelled', 'pending'])
             ->groupBy(DB::raw($groupByExpression))
             ->orderBy('date')
-            ->get();
+            ->get()
+            ->keyBy('date');
 
-        return response()->json($dailySales);
+        // Fill in missing days with zero values so charts have no gaps
+        $period = Carbon::parse($start)->toPeriod($end, '1 day');
+        $filled = [];
+
+        foreach ($period as $day) {
+            $key = $day->toDateString();
+            $filled[] = [
+                'date'                   => $key,
+                'revenue'                => isset($rows[$key]) ? (float) $rows[$key]->revenue : 0,
+                'orders_count'           => isset($rows[$key]) ? (int) $rows[$key]->orders_count : 0,
+                'avg_completion_minutes' => isset($rows[$key]) ? (float) $rows[$key]->avg_completion_minutes : 0,
+            ];
+        }
+
+        return response()->json([
+            'period' => [
+                'start' => $start->toDateString(),
+                'end'   => $end->toDateString(),
+            ],
+            'data' => $filled,
+        ]);
     }
 }
