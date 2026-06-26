@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\CampaignController;
 use App\Http\Controllers\Admin\CareerOpeningController;
 use App\Http\Controllers\Admin\OutletMenuStockController;
 use App\Http\Controllers\Admin\OutletController;
+use App\Http\Controllers\Admin\PaymentAccountController;
 use App\Http\Controllers\Admin\TaxController;
 use App\Http\Controllers\Supervisor\AvailabilityController;
 use App\Http\Controllers\Supervisor\StockController as SupervisorStockController;
@@ -177,6 +178,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/admin/availability-hours', [SettingsController::class, 'setAvailabilityHours']);
     Route::get('/admin/loyalty', [SettingsController::class, 'getLoyaltySettings']);
     Route::put('/admin/loyalty', [SettingsController::class, 'updateLoyaltySettings']);
+
+    // Payment Accounts
+    Route::get('/admin/payment-accounts', [PaymentAccountController::class, 'index']);
+    Route::get('/staff/payment-accounts', [PaymentAccountController::class, 'staffIndex']);
+    Route::post('/admin/payment-accounts', [PaymentAccountController::class, 'store']);
+    Route::put('/admin/payment-accounts/{paymentAccount}', [PaymentAccountController::class, 'update']);
+    Route::delete('/admin/payment-accounts/{paymentAccount}', [PaymentAccountController::class, 'destroy']);
+    Route::patch('/admin/payment-accounts/{paymentAccount}/toggle', [PaymentAccountController::class, 'toggle']);
 
     // Review Management
     Route::get('/admin/reviews', [ReviewController::class, 'index']);
