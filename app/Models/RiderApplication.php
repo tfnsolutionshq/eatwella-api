@@ -11,9 +11,19 @@ class RiderApplication extends Model
 
     protected $fillable = [
         'application_id', 'first_name', 'last_name', 'email', 'phone',
-        'state', 'vehicle_type', 'status', 'admin_note',
-        'activation_code', 'user_id',
+        'city_id', 'zone_id', 'street_address', 'vehicle_type', 'profile_picture',
+        'status', 'admin_note', 'activation_code', 'user_id',
     ];
+
+    public function city()
+    {
+        return $this->belongsTo(City::class);
+    }
+
+    public function zone()
+    {
+        return $this->belongsTo(Zone::class);
+    }
 
     protected static function booted(): void
     {

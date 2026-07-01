@@ -16,15 +16,21 @@ class RiderApplicationController extends Controller
     public function apply(Request $request)
     {
         $validated = $request->validate([
-            'first_name'   => 'required|string|max:255',
-            'last_name'    => 'required|string|max:255',
-            'email'        => 'required|email|unique:users,email',
-            'phone'        => 'required|string|max:20',
-            'state'        => 'required|string|max:255',
-            'vehicle_type' => 'required|string|max:100',
+            'first_name'      => 'required|string|max:255',
+            'last_name'       => 'required|string|max:255',
+            'email'           => 'required|email|unique:users,email',
+            'phone'           => 'required|string|max:20',
+            'city_id'         => 'required|exists:cities,id',
+            'zone_id'         => 'required|exists:zones,id',
+            'street_address'  => 'required|string|max:500',
+            'vehicle_type'    => 'required|string|max:100',
+            'profile_picture' => 'required|image|max:2048',
         ]);
 
         $existing = RiderApplication::where('email', $validated['email'])->first();
+
+        $picturePath = $request->file('profile_picture')->store('rider-applications', 'public');
+        $validated['profile_picture'] = $picturePath;
 
         if ($existing) {
             if ($existing->status === 'pending') {
@@ -33,7 +39,6 @@ class RiderApplicationController extends Controller
             if ($existing->status === 'approved') {
                 return response()->json(['message' => 'Your application has already been approved. Check your email for the activation code.'], 422);
             }
-            // rejected — allow reapplication by resetting the record
             $existing->update(array_merge($validated, [
                 'status'          => 'pending',
                 'admin_note'      => null,
@@ -164,6 +169,6 @@ class RiderApplicationController extends Controller
             $query->where('status', $request->status);
         }
 
-        return response()->json($query->latest()->paginate($request->get('per_page', 15)));
+        return response()->json($query->with(['city', 'zone'])->latest()->paginate($request->get('per_page', 15)));
     }
 }
