@@ -50,6 +50,7 @@ class Order extends Model
         'sent_to_kitchen_at',
         'completed_at',
         'outlet_id',
+        'payment_account_id',
     ];
 
     protected $casts = [
@@ -153,6 +154,11 @@ class Order extends Model
     public function outlet()
     {
         return $this->belongsTo(Outlet::class);
+    }
+
+    public function paymentAccount()
+    {
+        return $this->belongsTo(PaymentAccount::class);
     }
 
     public function deductItemsStock(): void

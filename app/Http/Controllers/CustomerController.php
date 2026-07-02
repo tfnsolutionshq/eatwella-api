@@ -230,8 +230,9 @@ class CustomerController extends Controller
 
         // Staff can link order to an existing customer and specify post-create action
         if ($isAttendant) {
-            $rules['customer_user_id'] = 'nullable|exists:users,id';
-            $rules['action'] = 'nullable|in:send_to_kitchen,complete';
+            $rules['customer_user_id']    = 'nullable|exists:users,id';
+            $rules['action']              = 'nullable|in:send_to_kitchen,complete';
+            $rules['payment_account_id']  = 'nullable|exists:payment_accounts,id';
         }
 
         // Guests must provide customer details
@@ -537,6 +538,7 @@ class CustomerController extends Controller
                     'attendant_id'         => $attendantId,
                     'order_type'           => $validated['order_type'],
                     'payment_type'         => null,
+                    'payment_account_id'   => null,
                     'customer_email'       => $customerEmail,
                     'customer_name'        => $customerName,
                     'customer_phone'       => $customerPhone,
@@ -596,7 +598,7 @@ class CustomerController extends Controller
                     throw new \Exception('Payment initialization failed: '.($paymentResult['message'] ?? 'Unknown error'));
                 }
 
-                $orderStatus = 'pending';
+                $orderStatus = 'init_payment';
                 $paymentStatus = 'unpaid';
                 $paymentMethod = 'paystack';
             } elseif ($validated['payment_type'] === 'loyalty_points') {
@@ -649,33 +651,36 @@ class CustomerController extends Controller
             }
 
             $order = Order::create([
-                'order_number' => $orderNumber,
-                'user_id' => $orderUserId,
-                'attendant_id' => $attendantId,
-                'order_type' => $validated['order_type'],
-                'payment_type' => $validated['payment_type'],
-                'customer_email' => $customerEmail,
-                'customer_name' => $customerName,
-                'customer_phone' => $customerPhone,
-                'table_number' => $validated['table_number'] ?? null,
-                'delivery_address' => $deliveryAddress,
-                'delivery_city' => null,
-                'delivery_zip' => null,
-                'delivery_zone_id' => $deliveryZoneId,
-                'total_amount' => $totalAmount,
-                'discount_amount' => $discountAmount,
-                'tax_amount' => $totalTaxAmount,
-                'delivery_fee'    => $deliveryFee,
+                'order_number'       => $orderNumber,
+                'user_id'            => $orderUserId,
+                'attendant_id'       => $attendantId,
+                'order_type'         => $validated['order_type'],
+                'payment_type'       => $validated['payment_type'],
+                'payment_account_id' => $isAttendant && in_array($validated['payment_type'], ['cash', 'pos', 'transfer'])
+                    ? ($validated['payment_account_id'] ?? null)
+                    : null,
+                'customer_email'       => $customerEmail,
+                'customer_name'        => $customerName,
+                'customer_phone'       => $customerPhone,
+                'table_number'         => $validated['table_number'] ?? null,
+                'delivery_address'     => $deliveryAddress,
+                'delivery_city'        => null,
+                'delivery_zip'         => null,
+                'delivery_zone_id'     => $deliveryZoneId,
+                'total_amount'         => $totalAmount,
+                'discount_amount'      => $discountAmount,
+                'tax_amount'           => $totalTaxAmount,
+                'delivery_fee'         => $deliveryFee,
                 'free_delivery_amount' => $freeDeliveryAmount,
-                'takeaway_amount'  => $takeawayAmount,
-                'tax_details'      => $taxDetails,
-                'discount_code' => $discountCode,
-                'final_amount' => $finalAmount,
-                'status' => $orderStatus,
-                'delivery_pin' => $deliveryPin,
-                'customer_note' => $validated['customer_note'] ?? null,
-                'expires_at' => $expiresAt,
-                'outlet_id' => $outletId ?? null,
+                'takeaway_amount'      => $takeawayAmount,
+                'tax_details'          => $taxDetails,
+                'discount_code'        => $discountCode,
+                'final_amount'         => $finalAmount,
+                'status'               => $orderStatus,
+                'delivery_pin'         => $deliveryPin,
+                'customer_note'        => $validated['customer_note'] ?? null,
+                'expires_at'           => $expiresAt,
+                'outlet_id'            => $outletId ?? null,
             ]);
 
             // Create Order Items

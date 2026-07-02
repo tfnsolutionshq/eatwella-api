@@ -76,6 +76,7 @@ Route::get('/cart', [CartController::class, 'index']);
 Route::post('/cart', [CartController::class, 'store']);
 Route::post('/cart/apply-discount', [CartController::class, 'applyDiscount']);
 Route::delete('/cart/remove-discount', [CartController::class, 'removeDiscount']);
+Route::delete('/cart', [CartController::class, 'clear']);
 Route::put('/cart/{itemId}', [CartController::class, 'update']);
 Route::delete('/cart/{itemId}', [CartController::class, 'destroy']);
 

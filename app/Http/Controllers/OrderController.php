@@ -33,6 +33,8 @@ class OrderController extends Controller
 
         if ($request->has('status')) {
             $query->where('status', $request->status);
+        } else {
+            $query->where('status', '!=', 'init_payment');
         }
 
         $this->applySearch($query, $request);
@@ -126,8 +128,8 @@ class OrderController extends Controller
 
         $updateData = ['status' => $validated['status']];
 
-        // If status is changed from pending to confirmed, update invoice to paid and deduct stock
-        if ($validated['status'] === 'confirmed' && $originalStatus === 'pending') {
+        // If status is changed from pending or init_payment to confirmed, update invoice to paid and deduct stock
+        if ($validated['status'] === 'confirmed' && ($originalStatus === 'pending' || $originalStatus === 'init_payment')) {
             if ($order->invoice) {
                 $order->invoice->update(['payment_status' => 'paid']);
             }
@@ -162,8 +164,9 @@ class OrderController extends Controller
         }
 
         $validated = $request->validate([
-            'payment_type' => 'required|in:cash,pos,transfer',
-            'action'       => 'nullable|in:send_to_kitchen,complete',
+            'payment_type'       => 'required|in:cash,pos,transfer',
+            'payment_account_id' => 'nullable|exists:payment_accounts,id',
+            'action'             => 'nullable|in:send_to_kitchen,complete',
         ]);
 
         $user = $request->user();
@@ -176,9 +179,10 @@ class OrderController extends Controller
         };
 
         $updateData = [
-            'payment_type' => $validated['payment_type'],
-            'status'       => $orderStatus,
-            'expires_at'   => null,
+            'payment_type'       => $validated['payment_type'],
+            'payment_account_id' => $validated['payment_account_id'] ?? null,
+            'status'             => $orderStatus,
+            'expires_at'         => null,
         ];
 
         if ($orderStatus === 'in_kitchen') {
@@ -294,6 +298,8 @@ class OrderController extends Controller
 
         if ($request->has('status')) {
             $query->where('status', $request->status);
+        } else {
+            $query->where('status', '!=', 'init_payment');
         }
 
         if ($request->filled('order_type')) {
@@ -526,6 +532,8 @@ class OrderController extends Controller
 
         if ($request->has('status')) {
             $query->where('status', $request->status);
+        } else {
+            $query->where('status', '!=', 'init_payment');
         }
 
         $this->applySearch($query, $request);

@@ -132,8 +132,8 @@ class PaymentController extends Controller
             return response()->json(['message' => 'Order not found'], 404);
         }
 
-        // If still pending, verify with Paystack (handles webhook delays)
-        if ($order->status === 'pending') {
+        // If still pending or init_payment, verify with Paystack (handles webhook delays)
+        if ($order->status === 'pending' || $order->status === 'init_payment') {
             $paymentGateway = app(\App\Interfaces\PaymentGatewayInterface::class);
             $verificationResult = $paymentGateway->verifyTransaction($reference);
 
@@ -178,8 +178,8 @@ class PaymentController extends Controller
             return redirect(config('services.frontend_url'));
         }
 
-        // If still pending, verify with Paystack
-        if ($order->status === 'pending') {
+        // If still pending or init_payment, verify with Paystack
+        if ($order->status === 'pending' || $order->status === 'init_payment') {
             $paymentGateway = app(\App\Interfaces\PaymentGatewayInterface::class);
             $verificationResult = $paymentGateway->verifyTransaction($reference);
 
@@ -229,7 +229,7 @@ class PaymentController extends Controller
             $order = Order::whereRaw('UPPER(order_number) = ?', [strtoupper($reference)])->first();
 
             if ($order && $status === 'success') {
-                if ($order->status === 'pending') {
+                if ($order->status === 'pending' || $order->status === 'init_payment') {
                     $order->update(['status' => 'confirmed']);
                     $order->invoice()->update(['payment_status' => 'paid']);
                     $order->deductItemsStock();

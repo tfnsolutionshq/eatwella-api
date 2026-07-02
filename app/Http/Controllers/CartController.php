@@ -227,6 +227,35 @@ class CartController extends Controller
 
 
     /**
+     * Clear all items from cart.
+     */
+    public function clear(Request $request)
+    {
+        $user = auth('sanctum')->user();
+
+        if ($user) {
+            $cart = Cart::where('user_id', $user->id)->first();
+        } else {
+            $cartId = $this->getCartId($request);
+            if (!$cartId) {
+                return response()->json(['message' => 'X-Cart-ID header required'], 400);
+            }
+            $cart = Cart::where('session_id', $cartId)->first();
+        }
+
+        if (!$cart) {
+            return response()->json(['message' => 'Cart is already empty'], 200);
+        }
+
+        $cart->items()->delete();
+        $cart->outlet_id = null;
+        $cart->discount_code = null;
+        $cart->save();
+
+        return response()->json(['message' => 'Cart cleared']);
+    }
+
+    /**
      * Apply discount code to cart.
      */
     public function applyDiscount(Request $request)
