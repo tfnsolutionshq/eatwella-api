@@ -55,7 +55,7 @@ class UserController extends Controller
             return $response;
         }
 
-        $singleOutletRoles = ['attendant', 'supervisor', 'kitchen', 'store_keeper'];
+        $singleOutletRoles = ['attendant', 'kitchen', 'store_keeper'];
 
         $validated = $request->validate([
             'name'      => 'required|string|max:255',

@@ -117,7 +117,7 @@ class OutletController extends Controller
                 ], 422);
             }
 
-            $user->update(['outlet_id' => $outlet->id]);
+            $outlet->deliveryAgents()->syncWithoutDetaching([$user->id]);
             $assigned[] = $user->only('id', 'name', 'email', 'role');
         }
 
@@ -181,6 +181,8 @@ class OutletController extends Controller
         }
 
         if ($user->role === 'delivery_agent') {
+            $outlet->deliveryAgents()->detach($user->id);
+        } elseif ($user->role === 'supervisor') {
             $outlet->deliveryAgents()->detach($user->id);
         } else {
             if ((string) $user->outlet_id !== (string) $outlet->id) {

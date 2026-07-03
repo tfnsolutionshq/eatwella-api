@@ -54,7 +54,7 @@ class Outlet extends Model
 
     public function supervisors()
     {
-        return $this->hasMany(User::class)->where('role', 'supervisor');
+        return $this->belongsToMany(User::class, 'outlet_user')->where('role', 'supervisor');
     }
 
     public function orders()
