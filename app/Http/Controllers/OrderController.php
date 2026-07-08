@@ -27,6 +27,8 @@ class OrderController extends Controller
 
         if ($outlet = $this->outletContext($request)) {
             $query->where('outlet_id', $outlet->id);
+        } elseif ($request->filled('outlet_ids')) {
+            $query->whereIn('outlet_id', (array) $request->outlet_ids);
         } elseif ($request->filled('outlet_id')) {
             $query->where('outlet_id', $request->outlet_id);
         }
@@ -294,6 +296,10 @@ class OrderController extends Controller
 
         if ($outlet = $this->outletContext($request)) {
             $query->where('outlet_id', $outlet->id);
+        } elseif ($request->filled('outlet_ids')) {
+            $query->whereIn('outlet_id', (array) $request->outlet_ids);
+        } elseif ($request->filled('outlet_id')) {
+            $query->where('outlet_id', $request->outlet_id);
         }
 
         if ($request->has('status')) {
