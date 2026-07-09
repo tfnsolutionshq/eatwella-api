@@ -11,12 +11,15 @@ use App\Models\Order;
 use App\Models\Setting;
 use App\Models\User;
 use App\Services\LoyaltyService;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class OrderController extends Controller
 {
+    public function __construct(protected NotificationService $notifications) {}
+
     public function index(Request $request)
     {
         if ($response = $this->requireRole($request, ['admin', 'attendant'])) {
@@ -125,6 +128,9 @@ class OrderController extends Controller
                 Log::error('Failed to send cancellation email: ' . $e->getMessage());
             }
 
+            // In-app + push notification
+            $this->notifications->orderCancelled($order);
+
             return response()->json(['status' => true, 'message' => 'Order cancelled successfully.', 'order' => $order]);
         }
 
@@ -138,6 +144,7 @@ class OrderController extends Controller
             $updateData['expires_at'] = null;
             $order->update($updateData);
             $order->deductItemsStock();
+            $this->notifications->orderConfirmed($order);
         } else {
             if ($validated['status'] === 'completed') {
                 $updateData['expires_at']      = null;
@@ -150,6 +157,11 @@ class OrderController extends Controller
         if ($validated['status'] === 'completed' && $originalStatus !== 'completed') {
             Mail::to($order->customer_email)->send(new OrderCompleted($order));
             $this->awardLoyaltyPoints($order);
+            $this->notifications->orderCompleted($order);
+        }
+
+        if ($validated['status'] === 'dispatched' && $originalStatus !== 'dispatched') {
+            $this->notifications->orderDispatched($order);
         }
 
         return response()->json($order->load('completedBy'));
@@ -219,6 +231,11 @@ class OrderController extends Controller
             } catch (\Exception $e) {
                 Log::error('Failed to send order completed email: ' . $e->getMessage());
             }
+            $this->notifications->orderCompleted($order);
+        }
+
+        if (in_array($orderStatus, ['confirmed', 'in-kitchen', 'ready', 'dispatched', 'completed'])) {
+            $this->notifications->orderConfirmed($order);
         }
 
         try {
@@ -226,6 +243,8 @@ class OrderController extends Controller
         } catch (\Exception $e) {
             Log::error('Failed to send order placed email: ' . $e->getMessage());
         }
+
+        $this->notifications->orderPlaced($order);
 
         return response()->json([
             'message' => 'Payment settled successfully.',
@@ -384,6 +403,9 @@ class OrderController extends Controller
             Mail::to($agent->email)->send(new OrderAssignedToAgent($order, $agent));
         }
 
+        // In-app + push notification (customer + agent)
+        $this->notifications->orderDispatched($order);
+
         return response()->json($order->load(['orderItems.menu', 'orderItems.packaging', 'invoice', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor', 'deliveryZone.city.state']));
     }
 
@@ -432,6 +454,7 @@ class OrderController extends Controller
         ]);
 
         $this->awardLoyaltyPoints($order);
+        $this->notifications->orderCompleted($order);
 
         return response()->json($order->load(['orderItems.menu', 'orderItems.packaging', 'invoice', 'deliveryAgent', 'assignedBySupervisor', 'completedBy']));
     }
@@ -468,6 +491,7 @@ class OrderController extends Controller
         ]);
 
         $this->awardLoyaltyPoints($order);
+        $this->notifications->orderCompleted($order);
 
         return response()->json($order->load(['orderItems.menu', 'orderItems.packaging', 'invoice', 'deliveryAgent', 'assignedBySupervisor', 'completedBy']));
     }
@@ -504,6 +528,7 @@ class OrderController extends Controller
         ]);
 
         $this->awardLoyaltyPoints($order);
+        $this->notifications->orderCompleted($order);
 
         return response()->json($order->load(['orderItems.menu', 'orderItems.packaging', 'invoice', 'deliveryAgent', 'assignedBySupervisor', 'completedBy']));
     }

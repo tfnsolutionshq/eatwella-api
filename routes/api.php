@@ -29,6 +29,7 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\OutletController as PublicOutletController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\RecommendationController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\RiderApplicationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -314,4 +315,17 @@ Route::middleware('auth:sanctum')->group(function () {
     // Outlet Stock Management (Supervisor & Store Keeper)
     Route::patch('/supervisor/menus/{menu}/stock', [SupervisorStockController::class, 'update']);
     Route::patch('/store-keeper/menus/{menu}/stock', [SupervisorStockController::class, 'update']);
+
+    // Notifications
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
+    Route::patch('/notifications/push-settings', [NotificationController::class, 'pushSettings']);
+    Route::patch('/notifications/read-all', [NotificationController::class, 'markAllRead']);
+    Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markRead']);
+    Route::delete('/notifications', [NotificationController::class, 'bulkDestroy']);
+    Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy']);
+
+    // FCM Tokens
+    Route::post('/fcm-tokens', [NotificationController::class, 'registerToken']);
+    Route::delete('/fcm-tokens', [NotificationController::class, 'removeToken']);
 });

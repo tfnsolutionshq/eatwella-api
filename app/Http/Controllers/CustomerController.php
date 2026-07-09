@@ -17,6 +17,7 @@ use App\Models\Tax;
 use App\Models\User;
 use App\Models\Zone;
 use App\Services\LoyaltyService;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -25,7 +26,11 @@ use Illuminate\Support\Str;
 
 class CustomerController extends Controller
 {
-    public function __construct(protected PaymentGatewayInterface $paymentGateway, protected LoyaltyService $loyalty) {}
+    public function __construct(
+        protected PaymentGatewayInterface $paymentGateway,
+        protected LoyaltyService $loyalty,
+        protected NotificationService $notifications,
+    ) {}
 
     public function takeawayPrice()
     {
@@ -763,12 +768,15 @@ class CustomerController extends Controller
             }
 
             // Send email after response data is ready (non-blocking)
+            // Notify customer + admin only for immediately confirmed orders (not gateway — payment not confirmed yet)
             if (in_array($validated['payment_type'], ['cash', 'pos', 'transfer', 'loyalty_points'])) {
                 try {
                     Mail::to($order->customer_email)->send(new OrderPlaced($order));
                 } catch (\Exception $e) {
                     Log::error('Failed to send order email: '.$e->getMessage());
                 }
+
+                $this->notifications->orderPlaced($order);
             }
 
             return response()->json($response, 201);

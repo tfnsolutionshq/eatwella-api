@@ -4,12 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Models\Order;
 use App\Models\Invoice;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class PaymentController extends Controller
 {
+    public function __construct(protected NotificationService $notifications) {}
+
     /**
      * Get all payments with totals (Admin and Attendant)
      */
@@ -138,18 +141,13 @@ class PaymentController extends Controller
             $verificationResult = $paymentGateway->verifyTransaction($reference);
 
             if ($verificationResult['status'] === 'success') {
-                // Update order and invoice status
                 $order->update(['status' => 'confirmed']);
                 $order->invoice()->update(['payment_status' => 'paid']);
                 $order->deductItemsStock();
-
-                // Send confirmation email
                 Mail::to($order->customer_email)->send(new \App\Mail\OrderPlaced($order));
-
-                // Refresh order data
+                $this->notifications->orderPlaced($order);
                 $order->refresh();
                 $order->load(['orderItems.menu', 'invoice']);
-
                 Log::info("Order {$reference} payment confirmed via status check (webhook delay)");
             }
         }
@@ -188,6 +186,7 @@ class PaymentController extends Controller
                 $order->invoice()->update(['payment_status' => 'paid']);
                 $order->deductItemsStock();
                 Mail::to($order->customer_email)->send(new \App\Mail\OrderPlaced($order));
+                $this->notifications->orderPlaced($order);
                 Log::info("Order {$reference} payment confirmed via callback");
             }
         }
@@ -234,6 +233,7 @@ class PaymentController extends Controller
                     $order->invoice()->update(['payment_status' => 'paid']);
                     $order->deductItemsStock();
                     Mail::to($order->customer_email)->send(new \App\Mail\OrderPlaced($order));
+                    $this->notifications->orderPlaced($order);
                     Log::info("Order {$reference} payment confirmed via webhook");
                 } else {
                     Log::info("Order {$reference} was already confirmed, ignoring webhook");

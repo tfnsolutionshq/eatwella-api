@@ -102,4 +102,73 @@ class AnalyticsTest extends TestCase
         $response->assertStatus(200);
         $this->assertEquals(50, $response->json('0.revenue'));
     }
+
+    public function test_preset_today_returns_correct_structure()
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        Sanctum::actingAs($admin);
+
+        $response = $this->getJson('/api/admin/analytics/daily-sales?preset=today');
+
+        $response->assertStatus(200)
+            ->assertJsonStructure(['period' => ['start', 'end'], 'granularity', 'data']);
+        $this->assertEquals('day', $response->json('granularity'));
+        $this->assertEquals(now()->toDateString(), $response->json('period.start'));
+    }
+
+    public function test_preset_this_week_returns_day_granularity()
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        Sanctum::actingAs($admin);
+
+        $response = $this->getJson('/api/admin/analytics/daily-sales?preset=this_week');
+
+        $response->assertStatus(200);
+        $this->assertEquals('day', $response->json('granularity'));
+    }
+
+    public function test_preset_this_year_returns_week_or_month_granularity()
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        Sanctum::actingAs($admin);
+
+        $response = $this->getJson('/api/admin/analytics/daily-sales?preset=this_year');
+
+        $response->assertStatus(200);
+        $this->assertContains($response->json('granularity'), ['week', 'month']);
+    }
+
+    public function test_preset_custom_uses_provided_dates()
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        Sanctum::actingAs($admin);
+
+        $response = $this->getJson('/api/admin/analytics/daily-sales?preset=custom&start_date=2025-01-01&end_date=2025-01-31');
+
+        $response->assertStatus(200);
+        $this->assertEquals('2025-01-01', $response->json('period.start'));
+        $this->assertEquals('2025-01-31', $response->json('period.end'));
+        $this->assertEquals('day', $response->json('granularity'));
+    }
+
+    public function test_preset_last_month_on_summary()
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        Sanctum::actingAs($admin);
+
+        $response = $this->getJson('/api/admin/analytics/summary?preset=last_month');
+
+        $response->assertStatus(200)
+            ->assertJsonStructure(['total_revenue', 'total_orders', 'average_order_value', 'period']);
+    }
+
+    public function test_preset_all_time_on_top_menus()
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        Sanctum::actingAs($admin);
+
+        $response = $this->getJson('/api/admin/analytics/top-menus?preset=all_time');
+
+        $response->assertStatus(200);
+    }
 }

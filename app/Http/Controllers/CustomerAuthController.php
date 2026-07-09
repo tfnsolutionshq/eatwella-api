@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\Order;
+use App\Models\FcmToken;
 use App\Services\LoyaltyService;
 use App\Services\NewUserDiscountService;
 use App\Mail\WelcomeEmail;
@@ -213,6 +214,14 @@ class CustomerAuthController extends Controller
         if ($response = $this->requireRole($request, ['customer'])) {
             return $response;
         }
+
+        // Remove FCM token for this device so push stops after logout
+        if ($request->filled('fcm_token')) {
+            FcmToken::where('user_id', $request->user()->id)
+                ->where('token', $request->fcm_token)
+                ->delete();
+        }
+
         $request->user()->currentAccessToken()->delete();
 
         return response()->json(['message' => 'Logged out successfully']);

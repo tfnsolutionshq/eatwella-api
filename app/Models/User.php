@@ -31,6 +31,7 @@ class User extends Authenticatable
         'loyalty_points',
         'is_suspended',
         'is_activated',
+        'push_notifications_enabled',
     ];
 
     /**
@@ -51,12 +52,13 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-            'birthday' => 'date',
-            'birth_month' => 'integer',
-            'is_suspended' => 'boolean',
-            'is_activated' => 'boolean',
+            'email_verified_at'           => 'datetime',
+            'password'                    => 'hashed',
+            'birthday'                    => 'date',
+            'birth_month'                 => 'integer',
+            'is_suspended'                => 'boolean',
+            'is_activated'                => 'boolean',
+            'push_notifications_enabled'  => 'boolean',
         ];
     }
 
@@ -111,5 +113,15 @@ class User extends Authenticatable
     public function cities()
     {
         return $this->belongsToMany(City::class, 'delivery_agent_cities');
+    }
+
+    public function notifications()
+    {
+        return $this->hasMany(\App\Models\Notification::class)->latest();
+    }
+
+    public function fcmTokens()
+    {
+        return $this->hasMany(\App\Models\FcmToken::class);
     }
 }
