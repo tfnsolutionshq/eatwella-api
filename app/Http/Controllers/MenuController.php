@@ -129,7 +129,7 @@ class MenuController extends Controller
 
     public function updateStock(Request $request, Menu $menu)
     {
-        if ($response = $this->requireRole($request, ['admin', 'supervisor', 'store_keeper'])) {
+        if ($response = $this->requireRole($request, ['admin'])) {
             return $response;
         }
 

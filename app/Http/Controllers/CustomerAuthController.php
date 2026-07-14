@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\Order;
 use App\Models\FcmToken;
+use App\Services\FirebaseService;
 use App\Services\LoyaltyService;
 use App\Services\NewUserDiscountService;
 use App\Mail\WelcomeEmail;
@@ -62,8 +63,10 @@ class CustomerAuthController extends Controller
     public function login(Request $request)
     {
         $request->validate([
-            'login'    => 'required|string',
-            'password' => 'required',
+            'login'       => 'required|string',
+            'password'    => 'required',
+            'fcm_token'   => 'nullable|string',
+            'device_type' => 'nullable|in:android,ios,web',
         ]);
 
         $field = filter_var($request->login, FILTER_VALIDATE_EMAIL) ? 'email' : 'phone';
@@ -82,10 +85,25 @@ class CustomerAuthController extends Controller
 
         $token = $user->createToken('customer-token')->plainTextToken;
 
+        // Register FCM token if provided and send a test push
+        if ($request->filled('fcm_token')) {
+            FcmToken::updateOrCreate(
+                ['user_id' => $user->id, 'token' => $request->fcm_token],
+                ['device_type' => $request->device_type ?? null]
+            );
+
+            app(FirebaseService::class)->sendToUser(
+                $user,
+                '👋 Login Successful',
+                'Welcome back, ' . $user->first_name . '! Push notifications are working.',
+                ['type' => 'login_test']
+            );
+        }
+
         return response()->json([
             'message' => 'Login successful',
-            'user' => $user->load('addresses.zone'),
-            'token' => $token
+            'user'    => $user->load('addresses.zone'),
+            'token'   => $token
         ]);
     }
 

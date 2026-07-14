@@ -311,6 +311,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Outlet Stock Management (Admin)
     Route::get('/admin/outlets/{outlet}/stock', [OutletMenuStockController::class, 'index']);
     Route::patch('/admin/outlets/{outlet}/menus/{menu}/stock', [OutletMenuStockController::class, 'update']);
+    Route::get('/admin/outlets/{outlet}/users', [OutletController::class, 'users']);
 
     // Outlet Stock Management (Supervisor & Store Keeper)
     Route::patch('/supervisor/menus/{menu}/stock', [SupervisorStockController::class, 'update']);

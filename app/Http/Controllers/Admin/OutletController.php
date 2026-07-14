@@ -174,6 +174,22 @@ class OutletController extends Controller
         ]);
     }
 
+    public function users(Request $request, Outlet $outlet)
+    {
+        if ($response = $this->requireRole($request, ['admin'])) {
+            return $response;
+        }
+
+        $query = $outlet->deliveryAgents()
+            ->select('users.id', 'users.name', 'users.email', 'users.phone', 'users.role', 'users.outlet_id');
+
+        if ($request->filled('role')) {
+            $query->where('users.role', $request->role);
+        }
+
+        return response()->json($query->get());
+    }
+
     public function removeUser(Request $request, Outlet $outlet, User $user)
     {
         if ($response = $this->requireRole($request, ['admin'])) {

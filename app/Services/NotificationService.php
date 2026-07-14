@@ -32,35 +32,35 @@ class NotificationService
                 'body'  => 'Your order #:number has been received! We\'re getting it ready.',
             ],
             self::ORDER_CONFIRMED => [
-                'title' => 'Order Confirmed ✅',
+                'title' => 'Order Confirmed',
                 'body'  => 'Your order #:number has been confirmed.',
             ],
             self::ORDER_DISPATCHED_CUSTOMER => [
-                'title' => 'On the Way 🚴',
+                'title' => 'On the Way',
                 'body'  => 'Your order #:number is on its way to you!',
             ],
             self::ORDER_DISPATCHED_AGENT => [
-                'title' => 'New Delivery Assigned 📦',
+                'title' => 'New Delivery Assigned',
                 'body'  => 'Order #:number has been assigned to you for delivery.',
             ],
             self::ORDER_COMPLETED_CUSTOMER => [
-                'title' => 'Delivered! 🎉',
+                'title' => 'Delivered!',
                 'body'  => 'Your order #:number has been delivered. Enjoy your meal!',
             ],
             self::ORDER_COMPLETED_AGENT => [
-                'title' => 'Delivery Confirmed ✅',
+                'title' => 'Delivery Confirmed',
                 'body'  => 'Delivery for order #:number has been confirmed by the customer.',
             ],
             self::ORDER_CANCELLED => [
-                'title' => 'Order Cancelled ❌',
+                'title' => 'Order Cancelled',
                 'body'  => 'Your order #:number has been cancelled.',
             ],
             self::ORDER_PLACED_ADMIN => [
-                'title' => 'New Order Received 🛎️',
+                'title' => 'New Order Received',
                 'body'  => 'Order #:number (:order_type) placed at :outlet_name.',
             ],
             self::ORDER_COMPLETED_ADMIN => [
-                'title' => 'Order Completed ✅',
+                'title' => 'Order Completed',
                 'body'  => 'Order #:number (:order_type) at :outlet_name has been completed.',
             ],
         ];

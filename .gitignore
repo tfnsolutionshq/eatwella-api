@@ -5,6 +5,10 @@
 .env.production
 .phpactor.json
 .phpunit.result.cache
+/*.json
+!composer.json
+!package.json
+!phpunit.xml
 /.fleet
 /.idea
 /.nova
