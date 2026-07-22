@@ -57,4 +57,47 @@ class OutletResolverController extends Controller
 
         return $earthRadius * 2 * asin(sqrt($a));
     }
+
+    /**
+     * POST /outlets/nearest
+     * Accept user coordinates and return the nearest active outlet.
+     */
+    public function nearest(Request $request)
+    {
+        $request->validate([
+            'latitude'  => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
+        ]);
+
+        $lat = (float) $request->latitude;
+        $lng = (float) $request->longitude;
+
+        $outlets = Outlet::with('city.state', 'availabilityHours')
+            ->where('is_active', true)
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->get();
+
+        if ($outlets->isEmpty()) {
+            // Fall back to any active outlet if none have coordinates set
+            $fallback = Outlet::with('city.state', 'availabilityHours')
+                ->where('is_active', true)
+                ->first();
+
+            if (! $fallback) {
+                return response()->json(['message' => 'No outlets available.'], 404);
+            }
+
+            return response()->json(['outlet' => $fallback, 'distance' => null]);
+        }
+
+        $nearest = $outlets
+            ->sortBy(fn ($o) => $this->haversine($lat, $lng, $o->latitude, $o->longitude))
+            ->first();
+
+        return response()->json([
+            'outlet'   => $nearest,
+            'distance' => round($this->haversine($lat, $lng, $nearest->latitude, $nearest->longitude), 2),
+        ]);
+    }
 }

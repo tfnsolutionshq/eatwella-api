@@ -25,7 +25,7 @@ abstract class Controller
     /**
      * Resolve the outlet context for the authenticated user.
      * For admin: returns null (global scope).
-     * For all other staff: reads the outlet baked into the token ability (outlet:<id>).
+     * For all other staff: first checks token ability (outlet:<id>), then falls back to user's outlet_id.
      */
     protected function outletContext(Request $request): ?Outlet
     {
@@ -37,17 +37,25 @@ abstract class Controller
 
         $token = $user->currentAccessToken();
 
-        if (! $token || ! property_exists($token, 'abilities')) {
-            return null;
+        if ($token) {
+            $abilities = $token->abilities ?? [];
+            if (is_string($abilities)) {
+                $abilities = json_decode($abilities, true) ?? [];
+            }
+
+            foreach ($abilities as $ability) {
+                if (str_starts_with((string) $ability, 'outlet:')) {
+                    $outletId = substr($ability, 7);
+                    $outlet = Outlet::find($outletId);
+                    if ($outlet) {
+                        return $outlet;
+                    }
+                }
+            }
         }
 
-        $abilities = is_array($token->abilities) ? $token->abilities : [];
-
-        foreach ($abilities as $ability) {
-            if (str_starts_with($ability, 'outlet:')) {
-                $outletId = substr($ability, 7);
-                return Outlet::find($outletId);
-            }
+        if ($user->outlet_id) {
+            return Outlet::find($user->outlet_id);
         }
 
         return null;

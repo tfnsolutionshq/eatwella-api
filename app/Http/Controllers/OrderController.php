@@ -93,25 +93,8 @@ class OrderController extends Controller
             $order->update(['status' => 'cancelled']);
 
             // Restore stock if order was confirmed (stock was already deducted)
-            if ($originalStatus === 'confirmed') {
-                $order->loadMissing('orderItems');
-                foreach ($order->orderItems as $item) {
-                    $menu = Menu::find($item->menu_id);
-                    if ($menu && $menu->stock_quantity !== null) {
-                        $before = $menu->stock_quantity;
-                        $after  = $before + $item->quantity;
-                        $menu->update(['stock_quantity' => $after, 'is_available' => true]);
-                        InventoryLog::create([
-                            'menu_id'          => $menu->id,
-                            'user_id'          => $user->id,
-                            'type'             => 'restock',
-                            'quantity_before'  => $before,
-                            'quantity_changed' => $item->quantity,
-                            'quantity_after'   => $after,
-                            'note'             => 'Stock restored due to order cancellation #' . $order->order_number,
-                        ]);
-                    }
-                }
+            if (in_array($originalStatus, ['confirmed', 'in_kitchen', 'ready', 'dispatched'])) {
+                $order->restoreItemsStock();
 
                 // Restore loyalty points if paid with loyalty points
                 if ($order->payment_type === 'loyalty_points' && $order->user_id) {
@@ -216,13 +199,7 @@ class OrderController extends Controller
             ]);
         }
 
-        $order->loadMissing('orderItems');
-        foreach ($order->orderItems as $item) {
-            $menu = Menu::find($item->menu_id);
-            if ($menu) {
-                $menu->deductStock($item->quantity, $user->id);
-            }
-        }
+        $order->deductItemsStock();
 
         if ($orderStatus === 'completed') {
             $this->awardLoyaltyPoints($order);
@@ -313,12 +290,9 @@ class OrderController extends Controller
 
         $query = Order::with(['orderItems.menu', 'orderItems.packaging', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor', 'completedBy', 'invoice']);
 
-        if ($outlet = $this->outletContext($request)) {
+        $outlet = $this->outletContext($request);
+        if ($outlet) {
             $query->where('outlet_id', $outlet->id);
-        } elseif ($request->filled('outlet_ids')) {
-            $query->whereIn('outlet_id', (array) $request->outlet_ids);
-        } elseif ($request->filled('outlet_id')) {
-            $query->where('outlet_id', $request->outlet_id);
         }
 
         if ($request->has('status')) {
@@ -364,10 +338,9 @@ class OrderController extends Controller
             return $response;
         }
 
-        if ($outlet = $this->outletContext($request)) {
-            if ((string) $order->outlet_id !== (string) $outlet->id) {
-                return response()->json(['message' => 'Order not found'], 404);
-            }
+        $outlet = $this->outletContext($request);
+        if ($outlet && (string) $order->outlet_id !== (string) $outlet->id) {
+            return response()->json(['message' => 'Order not found'], 404);
         }
 
         return $order->load(['orderItems.menu', 'orderItems.packaging', 'invoice', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor', 'completedBy', 'deliveryZone.city.state']);
@@ -415,7 +388,14 @@ class OrderController extends Controller
             return $response;
         }
 
-        if ($order->delivery_agent_id !== $request->user()->id) {
+        $rider = $request->user();
+
+        $assignedToRider = $order->delivery_agent_id === $rider->id;
+        $isAvailable     = $order->status === 'ready'
+            && is_null($order->delivery_agent_id)
+            && $rider->outlets()->where('outlets.id', $order->outlet_id)->exists();
+
+        if (! $assignedToRider && ! $isAvailable) {
             return response()->json(['message' => 'Order not found'], 404);
         }
 

@@ -166,8 +166,74 @@ class Order extends Model
         $this->loadMissing('orderItems');
         foreach ($this->orderItems as $item) {
             $menu = \App\Models\Menu::find($item->menu_id);
-            if ($menu) {
-                $menu->deductStock($item->quantity, $this->user_id);
+            if (! $menu) continue;
+
+            if ($this->outlet_id) {
+                $outletStock = \App\Models\OutletMenuStock::where('outlet_id', $this->outlet_id)
+                    ->where('menu_id', $menu->id)
+                    ->first();
+                if ($outletStock) {
+                    $before = $outletStock->stock_quantity;
+                    $after  = max(0, $before - $item->quantity);
+                    $outletStock->update(['stock_quantity' => $after]);
+                    \App\Models\InventoryLog::create([
+                        'menu_id'          => $menu->id,
+                        'user_id'          => $this->user_id,
+                        'type'             => 'deduction',
+                        'quantity_before'  => $before,
+                        'quantity_changed' => -$item->quantity,
+                        'quantity_after'   => $after,
+                        'note'             => 'Order deduction (outlet)',
+                    ]);
+                    continue;
+                }
+            }
+
+            $menu->deductStock($item->quantity, $this->user_id);
+        }
+    }
+
+    public function restoreItemsStock(): void
+    {
+        $this->loadMissing('orderItems');
+        foreach ($this->orderItems as $item) {
+            $menu = \App\Models\Menu::find($item->menu_id);
+            if (! $menu) continue;
+
+            if ($this->outlet_id) {
+                $outletStock = \App\Models\OutletMenuStock::where('outlet_id', $this->outlet_id)
+                    ->where('menu_id', $menu->id)
+                    ->first();
+                if ($outletStock) {
+                    $before = $outletStock->stock_quantity;
+                    $after  = $before + $item->quantity;
+                    $outletStock->update(['stock_quantity' => $after]);
+                    \App\Models\InventoryLog::create([
+                        'menu_id'          => $menu->id,
+                        'user_id'          => null,
+                        'type'             => 'restock',
+                        'quantity_before'  => $before,
+                        'quantity_changed' => $item->quantity,
+                        'quantity_after'   => $after,
+                        'note'             => 'Stock restored due to cancellation #' . $this->order_number,
+                    ]);
+                    continue;
+                }
+            }
+
+            if ($menu->stock_quantity !== null) {
+                $before = $menu->stock_quantity;
+                $after  = $before + $item->quantity;
+                $menu->update(['stock_quantity' => $after, 'is_available' => true]);
+                \App\Models\InventoryLog::create([
+                    'menu_id'          => $menu->id,
+                    'user_id'          => null,
+                    'type'             => 'restock',
+                    'quantity_before'  => $before,
+                    'quantity_changed' => $item->quantity,
+                    'quantity_after'   => $after,
+                    'note'             => 'Stock restored due to cancellation #' . $this->order_number,
+                ]);
             }
         }
     }

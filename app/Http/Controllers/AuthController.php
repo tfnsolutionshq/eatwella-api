@@ -40,10 +40,10 @@ class AuthController extends Controller
         $outletId  = $request->outlet_id ?? null;
         $abilities = ['*'];
 
-        if ($user->role === 'admin') {
-            // Admin sees everything — no outlet scoping
+        if (in_array($user->role, ['admin', 'delivery_agent'], true)) {
+            // Admin and delivery agents are not scoped to a single outlet
             $token = $user->createToken('staff-token', ['*'])->plainTextToken;
-            return response()->json(['token' => $token, 'user' => $user]);
+            return response()->json(['token' => $token, 'user' => $user->load('outlets')]);
         }
 
         // All other staff must provide an outlet_id
@@ -61,8 +61,8 @@ class AuthController extends Controller
 
         // Validate the staff member belongs to the requested outlet
         $allowed = match ($user->role) {
-            'supervisor' => $user->outlets()->where('outlets.id', $outletId)->exists(),
-            default      => (string) $user->outlet_id === (string) $outletId,
+            'supervisor', 'delivery_agent' => $user->outlets()->where('outlets.id', $outletId)->exists(),
+            default                        => (string) $user->outlet_id === (string) $outletId,
         };
 
         if (! $allowed) {

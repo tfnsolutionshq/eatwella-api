@@ -695,32 +695,7 @@ class CustomerController extends Controller
 
             // Deduct stock for all immediately paid orders
             if (in_array($orderStatus, ['confirmed', 'in_kitchen', 'completed'])) {
-                foreach ($orderItemsData as $data) {
-                    $menu = Menu::find($data['menu_id']);
-                    if ($menu) {
-                        if ($outletId) {
-                            $outletStock = \App\Models\OutletMenuStock::where('outlet_id', $outletId)
-                                ->where('menu_id', $menu->id)
-                                ->first();
-                            if ($outletStock) {
-                                $before = $outletStock->stock_quantity;
-                                $after  = max(0, $before - $data['quantity']);
-                                $outletStock->update(['stock_quantity' => $after]);
-                                \App\Models\InventoryLog::create([
-                                    'menu_id'          => $menu->id,
-                                    'user_id'          => $user?->id,
-                                    'type'             => 'deduction',
-                                    'quantity_before'  => $before,
-                                    'quantity_changed' => -$data['quantity'],
-                                    'quantity_after'   => $after,
-                                    'note'             => 'Order deduction',
-                                ]);
-                            }
-                        } else {
-                            $menu->deductStock($data['quantity'], $user?->id);
-                        }
-                    }
-                }
+                $order->deductItemsStock();
             }
 
             // Track kitchen/completion metadata if action was specified

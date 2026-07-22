@@ -41,6 +41,7 @@ use Illuminate\Support\Facades\Route;
 */
 
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\PasswordResetController;
 
 Route::post('/rider/apply', [RiderApplicationController::class, 'apply']);
 Route::post('/rider/activate', [RiderApplicationController::class, 'activate']);
@@ -52,6 +53,11 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/customer/register', [CustomerAuthController::class, 'register']);
 Route::post('/customer/login', [CustomerAuthController::class, 'login']);
 Route::delete('/customer/delete-account', [CustomerAuthController::class, 'deleteAccount']);
+
+// Password Reset (OTP) — all users
+Route::post('/forgot-password', [PasswordResetController::class, 'sendOtp']);
+Route::post('/verify-otp', [PasswordResetController::class, 'verifyOtp']);
+Route::post('/reset-password', [PasswordResetController::class, 'resetPassword']);
 
 // Customer / Guest Routes
 Route::get('/menus', [CustomerController::class, 'listMenus']);
@@ -108,6 +114,7 @@ Route::get('/availability-hours', [SettingsController::class, 'getAvailabilityHo
 Route::get('/outlets', [PublicOutletController::class, 'index']);
 Route::get('/outlets/{outlet}', [PublicOutletController::class, 'show']);
 Route::post('/outlets/resolve', [\App\Http\Controllers\OutletResolverController::class, 'resolve']);
+Route::post('/outlets/nearest', [\App\Http\Controllers\OutletResolverController::class, 'nearest']);
 
 // Public Campaign Routes
 Route::get('/campaigns', [CampaignController::class, 'publicIndex']);

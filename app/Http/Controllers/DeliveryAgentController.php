@@ -48,15 +48,19 @@ class DeliveryAgentController extends Controller
             'total_items'         => (int) $order->total_items,
             'restaurant_location' => 'Unizik',
             'delivery_address'    => $order->delivery_address,
+            'delivery_agent_id'   => $order->delivery_agent_id,
             'status'              => $order->status,
         ];
 
         if ($filter === 'available') {
+            $assignedOutletIds = $rider->outlets()->pluck('outlets.id');
+
             $orders = Order::select($select)
                 ->withSum('orderItems as total_items', 'quantity')
                 ->where('order_type', 'delivery')
                 ->where('status', 'ready')
                 ->whereNull('delivery_agent_id')
+                ->whereIn('outlet_id', $assignedOutletIds)
                 ->latest()
                 ->paginate($perPage);
 
@@ -93,11 +97,13 @@ class DeliveryAgentController extends Controller
             ->where('user_id', $rider->id)
             ->pluck('order_id');
 
+        $assignedOutletIds = $rider->outlets()->pluck('outlets.id');
+
         $orders = Order::select($select)
             ->withSum('orderItems as total_items', 'quantity')
             ->where('order_type', 'delivery')
-            ->where(function ($q) use ($rider, $ignoredOrderIds) {
-                $q->where(fn($q) => $q->where('status', 'ready')->whereNull('delivery_agent_id'))         // available
+            ->where(function ($q) use ($rider, $ignoredOrderIds, $assignedOutletIds) {
+                $q->where(fn($q) => $q->where('status', 'ready')->whereNull('delivery_agent_id')->whereIn('outlet_id', $assignedOutletIds))  // available from assigned outlets
                   ->orWhere('delivery_agent_id', $rider->id)                                               // mine (active/completed)
                   ->orWhereIn('id', $ignoredOrderIds);                                                     // ignored by me
             })

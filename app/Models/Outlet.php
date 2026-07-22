@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
@@ -24,6 +25,35 @@ class Outlet extends Model
         'latitude'  => 'float',
         'longitude' => 'float',
     ];
+
+    protected $appends = ['is_open'];
+
+    public function getIsOpenAttribute(): bool
+    {
+        $tz  = Setting::where('key', 'restaurant_timezone')->value('value') ?? 'Africa/Lagos';
+        $now = Carbon::now($tz);
+        $day = $now->format('l');
+
+        // Use outlet-specific hours if set
+        $hours = $this->availabilityHours->firstWhere('day', $day);
+
+        // Fall back to global hours
+        if (! $hours) {
+            $hoursJson = Setting::where('key', 'availability_hours')->value('value');
+            $global    = $hoursJson ? json_decode($hoursJson, true) : [];
+            $entry     = collect($global)->firstWhere('day', $day);
+            if (! $entry) return false;
+            $hours = (object) $entry;
+        }
+
+        if (! ($hours->enabled ?? false)) return false;
+        if (empty($hours->open) || empty($hours->close)) return false;
+
+        $open  = Carbon::parse($hours->open,  $tz)->setDateFrom($now);
+        $close = Carbon::parse($hours->close, $tz)->setDateFrom($now);
+
+        return $now->between($open, $close);
+    }
 
     public function city()
     {

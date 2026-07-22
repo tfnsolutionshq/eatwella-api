@@ -117,7 +117,7 @@ class OutletController extends Controller
                 ], 422);
             }
 
-            $outlet->deliveryAgents()->syncWithoutDetaching([$user->id]);
+            $outlet->supervisors()->syncWithoutDetaching([$user->id]);
             $assigned[] = $user->only('id', 'name', 'email', 'role');
         }
 
@@ -159,11 +159,6 @@ class OutletController extends Controller
 
             // Also ensure the agent's city list includes this outlet's city
             $agent->cities()->syncWithoutDetaching([$outlet->city_id]);
-
-            // Set outlet_id on agent if not already set
-            if (is_null($agent->outlet_id)) {
-                $agent->update(['outlet_id' => $outlet->id]);
-            }
 
             $assigned[] = $agent->only('id', 'name', 'email', 'role');
         }

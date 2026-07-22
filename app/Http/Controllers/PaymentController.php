@@ -32,6 +32,7 @@ class PaymentController extends Controller
                       ->orWhere('customer_phone', 'like', '%' . $request->search . '%');
                 });
             })
+            ->when($request->filled('outlet_id'), fn($q) => $q->whereHas('order', fn($q) => $q->where('outlet_id', $request->outlet_id)))
             ->when($request->filled('payment_status'), fn($q) => $q->where('payment_status', $request->payment_status))
             ->when($request->filled('payment_method'), fn($q) => $q->where('payment_method', $request->payment_method));
 

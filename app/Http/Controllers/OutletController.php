@@ -13,7 +13,7 @@ class OutletController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Outlet::with('city.state')->where('is_active', true);
+        $query = Outlet::with('city.state', 'availabilityHours')->where('is_active', true);
 
         if ($request->filled('city_id')) {
             $query->where('city_id', $request->city_id);
@@ -34,6 +34,6 @@ class OutletController extends Controller
             return response()->json(['message' => 'Outlet not found.'], 404);
         }
 
-        return response()->json($outlet->load('city.state'));
+        return response()->json($outlet->load('city.state', 'availabilityHours'));
     }
 }
