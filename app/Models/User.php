@@ -32,6 +32,8 @@ class User extends Authenticatable
         'is_suspended',
         'is_activated',
         'push_notifications_enabled',
+        'order_emails_enabled',
+        'promotional_emails_enabled',
     ];
 
     /**
@@ -59,6 +61,8 @@ class User extends Authenticatable
             'is_suspended'                => 'boolean',
             'is_activated'                => 'boolean',
             'push_notifications_enabled'  => 'boolean',
+            'order_emails_enabled'        => 'boolean',
+            'promotional_emails_enabled'  => 'boolean',
         ];
     }
 
@@ -123,5 +127,15 @@ class User extends Authenticatable
     public function fcmTokens()
     {
         return $this->hasMany(\App\Models\FcmToken::class);
+    }
+
+    public function shouldReceiveOrderEmails(): bool
+    {
+        return (bool) $this->order_emails_enabled;
+    }
+
+    public function shouldReceivePromotionalEmails(): bool
+    {
+        return (bool) $this->promotional_emails_enabled;
     }
 }

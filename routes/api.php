@@ -324,6 +324,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/supervisor/menus/{menu}/stock', [SupervisorStockController::class, 'update']);
     Route::patch('/store-keeper/menus/{menu}/stock', [SupervisorStockController::class, 'update']);
 
+    // Notification Preferences (all authenticated users)
+    Route::get('/notification-preferences', [NotificationController::class, 'getPreferences']);
+    Route::patch('/notification-preferences', [NotificationController::class, 'updatePreferences']);
+
     // Notifications
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);

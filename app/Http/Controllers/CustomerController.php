@@ -746,7 +746,10 @@ class CustomerController extends Controller
             // Notify customer + admin only for immediately confirmed orders (not gateway — payment not confirmed yet)
             if (in_array($validated['payment_type'], ['cash', 'pos', 'transfer', 'loyalty_points'])) {
                 try {
-                    Mail::to($order->customer_email)->send(new OrderPlaced($order));
+                    $checkoutUser = $orderUserId ? \App\Models\User::find($orderUserId) : null;
+                    if (! $checkoutUser || $checkoutUser->shouldReceiveOrderEmails()) {
+                        Mail::to($order->customer_email)->send(new OrderPlaced($order));
+                    }
                 } catch (\Exception $e) {
                     Log::error('Failed to send order email: '.$e->getMessage());
                 }

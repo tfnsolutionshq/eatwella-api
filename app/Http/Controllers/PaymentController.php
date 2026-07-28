@@ -145,7 +145,10 @@ class PaymentController extends Controller
                 $order->update(['status' => 'confirmed']);
                 $order->invoice()->update(['payment_status' => 'paid']);
                 $order->deductItemsStock();
-                Mail::to($order->customer_email)->send(new \App\Mail\OrderPlaced($order));
+                $statusUser = $order->user_id ? \App\Models\User::find($order->user_id) : null;
+                if (! $statusUser || $statusUser->shouldReceiveOrderEmails()) {
+                    Mail::to($order->customer_email)->send(new \App\Mail\OrderPlaced($order));
+                }
                 $this->notifications->orderPlaced($order);
                 $order->refresh();
                 $order->load(['orderItems.menu', 'invoice']);
@@ -186,7 +189,10 @@ class PaymentController extends Controller
                 $order->update(['status' => 'confirmed']);
                 $order->invoice()->update(['payment_status' => 'paid']);
                 $order->deductItemsStock();
-                Mail::to($order->customer_email)->send(new \App\Mail\OrderPlaced($order));
+                $callbackUser = $order->user_id ? \App\Models\User::find($order->user_id) : null;
+                if (! $callbackUser || $callbackUser->shouldReceiveOrderEmails()) {
+                    Mail::to($order->customer_email)->send(new \App\Mail\OrderPlaced($order));
+                }
                 $this->notifications->orderPlaced($order);
                 Log::info("Order {$reference} payment confirmed via callback");
             }
@@ -233,7 +239,10 @@ class PaymentController extends Controller
                     $order->update(['status' => 'confirmed']);
                     $order->invoice()->update(['payment_status' => 'paid']);
                     $order->deductItemsStock();
-                    Mail::to($order->customer_email)->send(new \App\Mail\OrderPlaced($order));
+                    $webhookUser = $order->user_id ? \App\Models\User::find($order->user_id) : null;
+                    if (! $webhookUser || $webhookUser->shouldReceiveOrderEmails()) {
+                        Mail::to($order->customer_email)->send(new \App\Mail\OrderPlaced($order));
+                    }
                     $this->notifications->orderPlaced($order);
                     Log::info("Order {$reference} payment confirmed via webhook");
                 } else {

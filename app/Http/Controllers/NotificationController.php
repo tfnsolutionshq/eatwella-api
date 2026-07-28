@@ -112,7 +112,38 @@ class NotificationController extends Controller
         return response()->json(['message' => "{$deleted} notification(s) deleted."]);
     }
 
-    // ─── Push Toggle ─────────────────────────────────────────────────────────
+    // ─── Notification & Email Preferences ───────────────────────────────────
+
+    /**
+     * GET /notification-preferences
+     */
+    public function getPreferences(Request $request)
+    {
+        $user = $request->user();
+        return response()->json([
+            'push_notifications_enabled'  => $user->push_notifications_enabled,
+            'order_emails_enabled'        => $user->order_emails_enabled,
+            'promotional_emails_enabled'  => $user->promotional_emails_enabled,
+        ]);
+    }
+
+    /**
+     * PATCH /notification-preferences
+     */
+    public function updatePreferences(Request $request)
+    {
+        $validated = $request->validate([
+            'push_notifications_enabled'  => 'sometimes|boolean',
+            'order_emails_enabled'        => 'sometimes|boolean',
+            'promotional_emails_enabled'  => 'sometimes|boolean',
+        ]);
+
+        $request->user()->update($validated);
+
+        return response()->json(['message' => 'Preferences updated.']);
+    }
+
+    // ─── Push Toggle (kept for backwards compatibility) ───────────────────────
 
     /**
      * PATCH /notifications/push-settings

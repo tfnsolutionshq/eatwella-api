@@ -106,7 +106,10 @@ class OrderController extends Controller
 
             // Send cancellation email
             try {
-                Mail::to($order->customer_email)->send(new OrderCancelled($order->load('orderItems.menu')));
+                $orderUser = $order->user_id ? User::find($order->user_id) : null;
+                if (! $orderUser || $orderUser->shouldReceiveOrderEmails()) {
+                    Mail::to($order->customer_email)->send(new OrderCancelled($order->load('orderItems.menu')));
+                }
             } catch (\Exception $e) {
                 Log::error('Failed to send cancellation email: ' . $e->getMessage());
             }
@@ -138,7 +141,10 @@ class OrderController extends Controller
         }
 
         if ($validated['status'] === 'completed' && $originalStatus !== 'completed') {
-            Mail::to($order->customer_email)->send(new OrderCompleted($order));
+            $orderUser = $order->user_id ? User::find($order->user_id) : null;
+            if (! $orderUser || $orderUser->shouldReceiveOrderEmails()) {
+                Mail::to($order->customer_email)->send(new OrderCompleted($order));
+            }
             $this->awardLoyaltyPoints($order);
             $this->notifications->orderCompleted($order);
         }
@@ -201,12 +207,17 @@ class OrderController extends Controller
 
         $order->deductItemsStock();
 
+        $settleUser = $order->user_id ? User::find($order->user_id) : null;
+        $canReceiveOrderEmail = ! $settleUser || $settleUser->shouldReceiveOrderEmails();
+
         if ($orderStatus === 'completed') {
             $this->awardLoyaltyPoints($order);
-            try {
-                Mail::to($order->customer_email)->send(new \App\Mail\OrderCompleted($order));
-            } catch (\Exception $e) {
-                Log::error('Failed to send order completed email: ' . $e->getMessage());
+            if ($canReceiveOrderEmail) {
+                try {
+                    Mail::to($order->customer_email)->send(new \App\Mail\OrderCompleted($order));
+                } catch (\Exception $e) {
+                    Log::error('Failed to send order completed email: ' . $e->getMessage());
+                }
             }
             $this->notifications->orderCompleted($order);
         }
@@ -215,10 +226,12 @@ class OrderController extends Controller
             $this->notifications->orderConfirmed($order);
         }
 
-        try {
-            Mail::to($order->customer_email)->send(new \App\Mail\OrderPlaced($order));
-        } catch (\Exception $e) {
-            Log::error('Failed to send order placed email: ' . $e->getMessage());
+        if ($canReceiveOrderEmail) {
+            try {
+                Mail::to($order->customer_email)->send(new \App\Mail\OrderPlaced($order));
+            } catch (\Exception $e) {
+                Log::error('Failed to send order placed email: ' . $e->getMessage());
+            }
         }
 
         $this->notifications->orderPlaced($order);

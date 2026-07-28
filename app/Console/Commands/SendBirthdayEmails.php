@@ -85,9 +85,12 @@ class SendBirthdayEmails extends Command
                 $freeDeliveryDiscount->users()->sync([$user->id]);
             }
 
-            Mail::to($user->email)->queue(new BirthdayEmail($user, $menuDiscount, $freeDeliveryDiscount));
-
-            $this->info("Birthday email queued for {$user->email}");
+            if ($user->shouldReceivePromotionalEmails()) {
+                Mail::to($user->email)->queue(new BirthdayEmail($user, $menuDiscount, $freeDeliveryDiscount));
+                $this->info("Birthday email queued for {$user->email}");
+            } else {
+                $this->info("Birthday email skipped (opted out) for {$user->email}");
+            }
         }
     }
 }
