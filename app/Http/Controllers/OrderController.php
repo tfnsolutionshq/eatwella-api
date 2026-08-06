@@ -378,6 +378,14 @@ class OrderController extends Controller
             return response()->json(['message' => 'User is not a delivery agent'], 422);
         }
 
+        $hasActiveOrder = Order::where('delivery_agent_id', $agent->id)
+            ->where('status', 'dispatched')
+            ->exists();
+
+        if ($hasActiveOrder) {
+            return response()->json(['message' => 'Rider already has an active delivery'], 422);
+        }
+
         $order->update([
             'delivery_agent_id' => $agent->id,
             'assigned_by_supervisor_id' => $request->user()->id,

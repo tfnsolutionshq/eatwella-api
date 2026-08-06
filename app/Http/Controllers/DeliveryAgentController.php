@@ -132,6 +132,14 @@ class DeliveryAgentController extends Controller
             return response()->json(['message' => 'Order has already been accepted by another rider.'], 422);
         }
 
+        $hasActiveOrder = Order::where('delivery_agent_id', $request->user()->id)
+            ->where('status', 'dispatched')
+            ->exists();
+
+        if ($hasActiveOrder) {
+            return response()->json(['message' => 'You already have an active delivery. Complete it before accepting a new one.'], 422);
+        }
+
         $order->update([
             'delivery_agent_id'         => $request->user()->id,
             'assigned_by_supervisor_id' => null,
