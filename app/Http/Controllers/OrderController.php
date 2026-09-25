@@ -175,6 +175,39 @@ class OrderController extends Controller
         $user = $request->user();
         $action = $validated['action'] ?? null;
 
+        // Check for Paystack Terminal push
+        if ($validated['payment_type'] === 'pos' && !empty($validated['payment_account_id'])) {
+            $paymentAccount = \App\Models\PaymentAccount::find($validated['payment_account_id']);
+            if ($paymentAccount && !empty($paymentAccount->terminal_id)) {
+                $paymentGateway = app(\App\Interfaces\PaymentGatewayInterface::class);
+                $result = $paymentGateway->pushToTerminal(
+                    $paymentAccount->terminal_id,
+                    (float) $order->final_amount,
+                    $order->order_number,
+                    $order->customer_email ?? 'eatwella@gmail.com'
+                );
+
+                if ($result['status'] === 'success') {
+                    $order->update([
+                        'status'             => 'init_payment',
+                        'payment_type'       => 'pos',
+                        'payment_account_id' => $paymentAccount->id,
+                        'paystack_reference' => $result['paystack_reference'] ?? null,
+                        'post_payment_action' => $validated['action'] ?? null,
+                        'expires_at'         => null,
+                    ]);
+
+                    return response()->json([
+                        'message' => 'Payment sent to Paystack Terminal. Awaiting customer payment.',
+                        'order'   => $order->load('orderItems.menu', 'invoice', 'completedBy'),
+                        'terminal_waiting' => true
+                    ]);
+                } else {
+                    return response()->json(['message' => $result['message'] ?? 'Failed to push to terminal'], 422);
+                }
+            }
+        }
+
         $orderStatus = match ($action) {
             'send_to_kitchen' => 'in_kitchen',
             'complete'        => 'completed',

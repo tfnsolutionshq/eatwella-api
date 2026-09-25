@@ -20,6 +20,7 @@ class Order extends Model
         'assigned_by_supervisor_id',
         'order_type',
         'payment_type',
+        'paystack_reference',
         'customer_email',
         'customer_name',
         'customer_phone',
@@ -51,6 +52,7 @@ class Order extends Model
         'completed_at',
         'outlet_id',
         'payment_account_id',
+        'post_payment_action',
     ];
 
     protected $casts = [
@@ -70,7 +72,20 @@ class Order extends Model
         'delivery_pin',
     ];
 
-    protected $appends = ['completion_time_minutes'];
+    protected $appends = ['completion_time_minutes', 'delivery_agent_info'];
+
+    public function getDeliveryAgentInfoAttribute(): ?array
+    {
+        if (! $this->delivery_agent_id || ! $this->relationLoaded('deliveryAgent') || ! $this->deliveryAgent) {
+            return null;
+        }
+
+        return [
+            'id'    => $this->deliveryAgent->id,
+            'name'  => $this->deliveryAgent->name,
+            'phone' => $this->deliveryAgent->phone,
+        ];
+    }
 
     public static function generateOrderNumber(): string
     {

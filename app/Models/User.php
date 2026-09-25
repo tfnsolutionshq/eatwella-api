@@ -131,7 +131,7 @@ class User extends Authenticatable
 
     public function shouldReceiveOrderEmails(): bool
     {
-        return (bool) $this->order_emails_enabled;
+        return $this->order_emails_enabled !== false && $this->order_emails_enabled !== 0;
     }
 
     public function shouldReceivePromotionalEmails(): bool

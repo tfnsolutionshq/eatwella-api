@@ -8,6 +8,7 @@ use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Http;
 
 class PaymentController extends Controller
 {
@@ -119,18 +120,25 @@ class PaymentController extends Controller
 
     /**
      * Get order status after payment (callback endpoint)
+     * Accepts: ?reference=  OR  ?order_id=  OR  ?order_number=
      */
     public function orderStatus(Request $request)
     {
-        $reference = $request->query('reference');
+        $order = null;
 
-        if (!$reference) {
-            return response()->json(['message' => 'No reference provided'], 400);
+        if ($request->filled('reference')) {
+            $reference = $request->query('reference');
+            $order = Order::where('paystack_reference', $reference)
+                ->orWhereRaw('UPPER(order_number) = ?', [strtoupper($reference)])
+                ->with(['orderItems.menu', 'invoice'])
+                ->first();
+        } elseif ($request->filled('order_id')) {
+            $order = Order::with(['orderItems.menu', 'invoice'])->find($request->query('order_id'));
+        } elseif ($request->filled('order_number')) {
+            $order = Order::whereRaw('UPPER(order_number) = ?', [strtoupper($request->query('order_number'))])
+                ->with(['orderItems.menu', 'invoice'])
+                ->first();
         }
-
-        $order = Order::whereRaw('UPPER(order_number) = ?', [strtoupper($reference)])
-            ->with(['orderItems.menu', 'invoice'])
-            ->first();
 
         if (!$order) {
             return response()->json(['message' => 'Order not found'], 404);
@@ -139,7 +147,36 @@ class PaymentController extends Controller
         // If still pending or init_payment, verify with Paystack (handles webhook delays)
         if ($order->status === 'pending' || $order->status === 'init_payment') {
             $paymentGateway = app(\App\Interfaces\PaymentGatewayInterface::class);
-            $verificationResult = $paymentGateway->verifyTransaction($reference);
+            $verifyRef = $order->paystack_reference;
+            $verificationResult = ['status' => 'failed'];
+
+            if ($verifyRef) {
+                // Try direct transaction verify first (works for gateway + numeric terminal refs)
+                $verificationResult = $paymentGateway->verifyTransaction($verifyRef);
+
+                // If failed and it looks like an offline_reference (pure numeric), try fetching
+                // the payment request by request_code to get the real transaction reference
+                if ($verificationResult['status'] === 'failed' && is_numeric($verifyRef)) {
+                    $prVerify = Http::withToken(config('services.paystack.secret_key'))
+                        ->get("https://api.paystack.co/paymentrequest", ['perPage' => 10]);
+
+                    if ($prVerify->successful()) {
+                        foreach ($prVerify->json('data') ?? [] as $pr) {
+                            if ((string)($pr['offline_reference'] ?? '') === (string)$verifyRef) {
+                                $txRef = $pr['transactions'][0]['reference'] ?? null;
+                                if ($txRef) {
+                                    $verificationResult = $paymentGateway->verifyTransaction($txRef);
+                                    // Store the real reference for future lookups
+                                    if ($verificationResult['status'] === 'success') {
+                                        $order->update(['paystack_reference' => $txRef]);
+                                    }
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
 
             if ($verificationResult['status'] === 'success') {
                 $order->update(['status' => 'confirmed']);
@@ -152,7 +189,7 @@ class PaymentController extends Controller
                 $this->notifications->orderPlaced($order);
                 $order->refresh();
                 $order->load(['orderItems.menu', 'invoice']);
-                Log::info("Order {$reference} payment confirmed via status check (webhook delay)");
+                Log::info("Order {$order->order_number} payment confirmed via status check");
             }
         }
 
@@ -174,7 +211,9 @@ class PaymentController extends Controller
             return redirect(config('services.frontend_url'));
         }
 
-        $order = Order::whereRaw('UPPER(order_number) = ?', [strtoupper($reference)])->first();
+        $order = Order::where('paystack_reference', $reference)
+            ->orWhereRaw('UPPER(order_number) = ?', [strtoupper($reference)])
+            ->first();
 
         if (!$order) {
             return redirect(config('services.frontend_url'));
@@ -183,7 +222,8 @@ class PaymentController extends Controller
         // If still pending or init_payment, verify with Paystack
         if ($order->status === 'pending' || $order->status === 'init_payment') {
             $paymentGateway = app(\App\Interfaces\PaymentGatewayInterface::class);
-            $verificationResult = $paymentGateway->verifyTransaction($reference);
+            $verifyRef = $order->paystack_reference;
+            $verificationResult = $verifyRef ? $paymentGateway->verifyTransaction($verifyRef) : ['status' => 'failed'];
 
             if ($verificationResult['status'] === 'success') {
                 $order->update(['status' => 'confirmed']);
@@ -194,7 +234,7 @@ class PaymentController extends Controller
                     Mail::to($order->customer_email)->send(new \App\Mail\OrderPlaced($order));
                 }
                 $this->notifications->orderPlaced($order);
-                Log::info("Order {$reference} payment confirmed via callback");
+                Log::info("Order {$order->order_number} payment confirmed via callback");
             }
         }
 
@@ -224,32 +264,86 @@ class PaymentController extends Controller
         $event = $request->input('event');
         $data = $request->input('data');
 
-        Log::info('Webhook event processed', ['event' => $event, 'reference' => $data['reference'] ?? 'N/A']);
+        Log::info('Webhook event processed', [
+            'event'     => $event,
+            'reference' => $data['reference'] ?? 'N/A',
+            'metadata'  => $data['metadata'] ?? null,
+            'full_data' => $data,
+        ]);
 
-        // Handle charge.success event
         if ($event === 'charge.success') {
-            $reference = $data['reference'];
-            $status = $data['status'];
+            $reference        = $data['reference'] ?? null;
+            $status           = $data['status'] ?? null;
+            $offlineReference = $data['metadata']['offline_reference'] ?? null;
 
-            // Find order by reference and update status
-            $order = Order::whereRaw('UPPER(order_number) = ?', [strtoupper($reference)])->first();
+            if (! $reference || $status !== 'success') {
+                return response()->json(['message' => 'Webhook received'], 200);
+            }
 
-            if ($order && $status === 'success') {
-                if ($order->status === 'pending' || $order->status === 'init_payment') {
-                    $order->update(['status' => 'confirmed']);
-                    $order->invoice()->update(['payment_status' => 'paid']);
-                    $order->deductItemsStock();
-                    $webhookUser = $order->user_id ? \App\Models\User::find($order->user_id) : null;
-                    if (! $webhookUser || $webhookUser->shouldReceiveOrderEmails()) {
-                        Mail::to($order->customer_email)->send(new \App\Mail\OrderPlaced($order));
-                    }
-                    $this->notifications->orderPlaced($order);
-                    Log::info("Order {$reference} payment confirmed via webhook");
-                } else {
-                    Log::info("Order {$reference} was already confirmed, ignoring webhook");
+            $order = Order::where('paystack_reference', $reference)->first()
+                ?? ($offlineReference ? Order::where('paystack_reference', $offlineReference)->first() : null)
+                ?? Order::whereRaw('UPPER(order_number) = ?', [strtoupper($reference)])->first();
+
+            if ($order && ($order->status === 'pending' || $order->status === 'init_payment')) {
+                $finalStatus = match ($order->post_payment_action) {
+                    'send_to_kitchen' => 'in_kitchen',
+                    'complete'        => 'completed',
+                    default           => 'confirmed',
+                };
+                $updateData = ['status' => $finalStatus, 'paystack_reference' => $reference];
+                if ($finalStatus === 'in_kitchen') {
+                    $updateData['sent_to_kitchen_at'] = now();
+                } elseif ($finalStatus === 'completed') {
+                    $updateData['completed_at'] = now();
                 }
+                $order->update($updateData);
+                $order->invoice()->update(['payment_status' => 'paid']);
+                $order->deductItemsStock();
+                $webhookUser = $order->user_id ? \App\Models\User::find($order->user_id) : null;
+                if (! $webhookUser || $webhookUser->shouldReceiveOrderEmails()) {
+                    Mail::to($order->customer_email)->send(new \App\Mail\OrderPlaced($order));
+                }
+                $this->notifications->orderPlaced($order);
+                Log::info("Order {$order->order_number} set to {$finalStatus} via charge.success webhook");
             } else {
-                Log::warning("Order not found or status mismatch", ['reference' => $reference, 'status' => $status]);
+                Log::warning('Webhook charge.success: order not found or already confirmed', ['reference' => $reference]);
+            }
+        }
+
+        // POS terminal payments fire paymentrequest.success with offline_reference at top level
+        if ($event === 'paymentrequest.success') {
+            $offlineReference = $data['offline_reference'] ?? null;
+            $status           = $data['status'] ?? null;
+
+            if (! $offlineReference || $status !== 'success') {
+                return response()->json(['message' => 'Webhook received'], 200);
+            }
+
+            $order = Order::where('paystack_reference', $offlineReference)->first();
+
+            if ($order && ($order->status === 'pending' || $order->status === 'init_payment')) {
+                $finalStatus = match ($order->post_payment_action) {
+                    'send_to_kitchen' => 'in_kitchen',
+                    'complete'        => 'completed',
+                    default           => 'confirmed',
+                };
+                $updateData = ['status' => $finalStatus];
+                if ($finalStatus === 'in_kitchen') {
+                    $updateData['sent_to_kitchen_at'] = now();
+                } elseif ($finalStatus === 'completed') {
+                    $updateData['completed_at'] = now();
+                }
+                $order->update($updateData);
+                $order->invoice()->update(['payment_status' => 'paid']);
+                $order->deductItemsStock();
+                $webhookUser = $order->user_id ? \App\Models\User::find($order->user_id) : null;
+                if (! $webhookUser || $webhookUser->shouldReceiveOrderEmails()) {
+                    Mail::to($order->customer_email)->send(new \App\Mail\OrderPlaced($order));
+                }
+                $this->notifications->orderPlaced($order);
+                Log::info("Order {$order->order_number} set to {$finalStatus} via paymentrequest.success webhook");
+            } else {
+                Log::warning('Webhook paymentrequest.success: order not found or already confirmed', ['offline_reference' => $offlineReference]);
             }
         }
 

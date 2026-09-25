@@ -11,9 +11,15 @@ class PaymentAccount extends Model
         'label',
         'account_name',
         'account_number',
+        'terminal_id',
         'is_active',
         'sort_order',
     ];
+
+    protected $hidden = [
+        'terminal_id',
+    ];
+
 
     protected $casts = [
         'is_active'  => 'boolean',

@@ -172,7 +172,7 @@ class CustomerAuthController extends Controller
         }
 
         $orders = Order::where('user_id', $request->user()->id)
-            ->whereNotIn('status', ['completed', 'cancelled'])
+            ->whereNotIn('status', ['completed', 'cancelled', 'init_payment'])
             ->withSum('orderItems as total_items', 'quantity')
             ->latest()
             ->paginate($request->get('per_page', 10), ['id', 'order_number', 'status', 'final_amount', 'user_id']);
@@ -198,11 +198,15 @@ class CustomerAuthController extends Controller
         $perPage = $request->get('per_page', 10);
 
         $orders = Order::where('user_id', $request->user()->id)
-            ->with(['orderItems.menu', 'orderItems.packaging', 'invoice', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name'])
+            ->where('status', '!=', 'init_payment')
+            ->with(['orderItems.menu', 'orderItems.packaging', 'invoice', 'deliveryAgent', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name'])
             ->latest()
             ->paginate($perPage);
 
-        $orders->getCollection()->each(fn($order) => $order->makeVisible('delivery_pin'));
+        $orders->getCollection()->each(function ($order) {
+            $order->makeVisible('delivery_pin');
+            $order->setHidden(array_merge($order->getHidden(), ['deliveryAgent', 'delivery_agent']));
+        });
 
         return response()->json($orders);
     }

@@ -10,7 +10,7 @@ class PaymentAccountController extends Controller
 {
     public function index(Request $request)
     {
-        if ($response = $this->requireRole($request, ['admin'])) {
+        if ($response = $this->requireRole($request, ['admin', 'attendant', 'supervisor'])) {
             return $response;
         }
 
@@ -30,6 +30,7 @@ class PaymentAccountController extends Controller
             'label'          => 'required|string|max:255',
             'account_name'   => 'nullable|string|max:255',
             'account_number' => 'nullable|string|max:100',
+            'terminal_id'    => 'nullable|string|max:255',
             'is_active'      => 'boolean',
             'sort_order'     => 'integer|min:0',
         ]);
@@ -50,6 +51,7 @@ class PaymentAccountController extends Controller
             'label'          => 'sometimes|string|max:255',
             'account_name'   => 'nullable|string|max:255',
             'account_number' => 'nullable|string|max:100',
+            'terminal_id'    => 'nullable|string|max:255',
             'is_active'      => 'boolean',
             'sort_order'     => 'integer|min:0',
         ]);

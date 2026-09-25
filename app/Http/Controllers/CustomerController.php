@@ -590,6 +590,8 @@ class CustomerController extends Controller
                 ], 201);
             }
 
+            $terminalWaiting = false;
+
             // Handle payment based on payment type
             if ($validated['payment_type'] === 'gateway') {
                 // Initialize Payment with Paystack using our order number as reference
@@ -603,6 +605,8 @@ class CustomerController extends Controller
                     throw new \Exception('Payment initialization failed: '.($paymentResult['message'] ?? 'Unknown error'));
                 }
 
+                // Store the exact reference Paystack used (lowercased) so verification matches
+                $paystackReference = $paymentResult['reference'];
                 $orderStatus = 'init_payment';
                 $paymentStatus = 'unpaid';
                 $paymentMethod = 'paystack';
@@ -630,21 +634,49 @@ class CustomerController extends Controller
                 $paymentMethod = 'loyalty_points';
             } else {
                 // Cash / POS / Transfer payment
-                if ($isAttendant) {
-                    $action = $validated['action'] ?? null;
-                    $orderStatus = match ($action) {
-                        'send_to_kitchen' => 'in_kitchen',
-                        'complete'        => 'completed',
-                        default           => 'confirmed',
-                    };
-                    $paymentStatus = 'paid';
-                } else {
-                    // Customer placed order with cash: pending until attendant confirms payment
-                    $orderStatus = 'pending';
-                    $paymentStatus = 'pending';
+                $isTerminalPayment = false;
+
+                if ($validated['payment_type'] === 'pos' && !empty($validated['payment_account_id'])) {
+                    $paymentAccount = \App\Models\PaymentAccount::find($validated['payment_account_id']);
+                    if ($paymentAccount && !empty($paymentAccount->terminal_id)) {
+                        $paymentResult = $this->paymentGateway->pushToTerminal(
+                            $paymentAccount->terminal_id,
+                            (float) $finalAmount,
+                            $orderNumber,
+                            $customerEmail ?? 'pos@eatwella.com'
+                        );
+
+                        if ($paymentResult['status'] === 'failed') {
+                            return response()->json(['message' => $paymentResult['message'] ?? 'Failed to push to terminal'], 422);
+                        }
+
+                        $orderStatus = 'init_payment';
+                        $paymentStatus = 'pending';
+                        $paymentMethod = 'pos';
+                        $terminalWaiting = true;
+                        $isTerminalPayment = true;
+                        $paystackReference = $paymentResult['paystack_reference'] ?? null;
+                        $postPaymentAction = $validated['action'] ?? null;
+                    }
                 }
 
-                $paymentMethod = $validated['payment_type']; // cash, pos, or transfer
+                if (!$isTerminalPayment) {
+                    if ($isAttendant) {
+                        $action = $validated['action'] ?? null;
+                        $orderStatus = match ($action) {
+                            'send_to_kitchen' => 'in_kitchen',
+                            'complete'        => 'completed',
+                            default           => 'confirmed',
+                        };
+                        $paymentStatus = 'paid';
+                    } else {
+                        // Customer placed order with cash: pending until attendant confirms payment
+                        $orderStatus = 'pending';
+                        $paymentStatus = 'pending';
+                    }
+
+                    $paymentMethod = $validated['payment_type']; // cash, pos, or transfer
+                }
             }
 
             // Create Order
@@ -686,6 +718,8 @@ class CustomerController extends Controller
                 'customer_note'        => $validated['customer_note'] ?? null,
                 'expires_at'           => $expiresAt,
                 'outlet_id'            => $outletId ?? null,
+                'paystack_reference'   => $paystackReference ?? null,
+                'post_payment_action'  => $postPaymentAction ?? null,
             ]);
 
             // Create Order Items
@@ -728,12 +762,22 @@ class CustomerController extends Controller
 
             // Prepare response
             $order->makeVisible('delivery_pin');
+            
+            $responseMessage = 'Order created, proceed to payment';
+            if ($terminalWaiting) {
+                $responseMessage = 'Payment sent to Paystack Terminal. Awaiting customer payment.';
+            } elseif (in_array($validated['payment_type'], ['cash', 'pos', 'transfer', 'loyalty_points'])) {
+                $responseMessage = 'Order placed successfully';
+            }
+
             $response = [
-                'message' => in_array($validated['payment_type'], ['cash', 'pos', 'transfer', 'loyalty_points'])
-                    ? 'Order placed successfully'
-                    : 'Order created, proceed to payment',
+                'message' => $responseMessage,
                 'order' => $order->load('orderItems', 'invoice', 'deliveryAgent', 'assignedBySupervisor'),
             ];
+
+            if ($terminalWaiting) {
+                $response['terminal_waiting'] = true;
+            }
 
             if ($validated['payment_type'] === 'gateway') {
                 $response['payment'] = [
