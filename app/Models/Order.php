@@ -53,6 +53,10 @@ class Order extends Model
         'outlet_id',
         'payment_account_id',
         'post_payment_action',
+        'offline_id',
+        'offline_created_at',
+        'sync_batch_id',
+        'sync_reconciliation',
     ];
 
     protected $casts = [
@@ -62,7 +66,9 @@ class Order extends Model
         'sent_to_kitchen_at' => 'datetime',
         'preparing_at' => 'datetime',
         'ready_at'     => 'datetime',
+        'offline_created_at' => 'datetime',
         'tax_details' => 'array',
+        'sync_reconciliation' => 'array',
         'tax_amount' => 'decimal:2',
         'delivery_fee' => 'decimal:2',
         'free_delivery_amount' => 'decimal:2',
@@ -174,6 +180,11 @@ class Order extends Model
     public function paymentAccount()
     {
         return $this->belongsTo(PaymentAccount::class);
+    }
+
+    public function syncBatch(): BelongsTo
+    {
+        return $this->belongsTo(OfflineSyncBatch::class, 'sync_batch_id');
     }
 
     public function deductItemsStock(): void

@@ -30,6 +30,7 @@ use App\Http\Controllers\OutletController as PublicOutletController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\RecommendationController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\OfflineSyncController;
 use App\Http\Controllers\RiderApplicationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -221,6 +222,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/admin/orders/{order}/complete-delivery', [OrderController::class, 'adminCompleteDelivery']);
     Route::get('/attendant/orders', [OrderController::class, 'attendantOrders']);
     Route::get('/attendant/orders/{order}', [OrderController::class, 'show']);
+    Route::post('/attendant/offline-sync', [OfflineSyncController::class, 'sync']);
 
     // Supervisor — Outlet Dashboard & Availability Hours
     Route::get('/supervisor/outlet', [AvailabilityController::class, 'outlet']);

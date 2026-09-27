@@ -18,12 +18,14 @@ class OrderItem extends Model
         'subtotal',
         'packaging_id',
         'packaging_price',
+        'local_stock_at_order',
     ];
 
     protected $casts = [
         'price' => 'float',
         'subtotal' => 'float',
         'packaging_price' => 'float',
+        'local_stock_at_order' => 'integer',
     ];
 
     public function packaging()
