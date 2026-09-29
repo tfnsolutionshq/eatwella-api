@@ -28,6 +28,7 @@ class OfflineSyncController extends Controller
         }
 
         $validated = $request->validate([
+            'outlet_id' => 'nullable|uuid|exists:outlets,id',
             'batch_id' => 'required|uuid',
             'orders' => 'required|array|min:1',
             'orders.*.offline_id' => 'required|uuid',
@@ -56,7 +57,28 @@ class OfflineSyncController extends Controller
 
         $user = $request->user();
         $outlet = $this->outletContext($request);
-        $outletId = $outlet?->id;
+        $outletId = $outlet?->id
+            ?? $validated['outlet_id'] ?? null
+            ?? $request->header('X-Outlet-ID');
+
+        if (! $outletId && $user) {
+            $token = $user->currentAccessToken();
+            if ($token) {
+                $abilities = $token->abilities ?? [];
+                if (is_string($abilities)) {
+                    $abilities = json_decode($abilities, true) ?? [];
+                }
+                foreach ($abilities as $ability) {
+                    if (str_starts_with((string) $ability, 'outlet:')) {
+                        $outletId = substr($ability, 7);
+                        break;
+                    }
+                }
+            }
+            if (! $outletId && $user->outlet_id) {
+                $outletId = $user->outlet_id;
+            }
+        }
 
         // Idempotency check for batch
         $existingBatch = OfflineSyncBatch::find($validated['batch_id']);

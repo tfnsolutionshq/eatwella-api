@@ -40,8 +40,26 @@ class AuthController extends Controller
         $outletId  = $request->outlet_id ?? null;
         $abilities = ['*'];
 
-        if (in_array($user->role, ['admin', 'delivery_agent'], true)) {
-            // Admin and delivery agents are not scoped to a single outlet
+        if ($user->role === 'admin') {
+            $abilities = ['*'];
+            $outlet = null;
+            if ($outletId) {
+                $outlet = Outlet::find($outletId);
+                if (! $outlet || ! $outlet->is_active) {
+                    Auth::logout();
+                    return response()->json(['message' => 'The selected outlet is not available.'], 422);
+                }
+                $abilities[] = 'outlet:' . $outletId;
+            }
+            $token = $user->createToken('staff-token', $abilities)->plainTextToken;
+            $res = ['token' => $token, 'user' => $user->load('outlets')];
+            if ($outlet) {
+                $res['outlet'] = $outlet;
+            }
+            return response()->json($res);
+        }
+
+        if ($user->role === 'delivery_agent') {
             $token = $user->createToken('staff-token', ['*'])->plainTextToken;
             return response()->json(['token' => $token, 'user' => $user->load('outlets')]);
         }

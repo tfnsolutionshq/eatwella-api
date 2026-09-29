@@ -91,8 +91,27 @@ class CartController extends Controller
 
         $outletChanged = false;
 
-        if (! empty($validated['outlet_id'])) {
-            $newOutletId = $validated['outlet_id'];
+        $newOutletId = $validated['outlet_id'] ?? $request->header('X-Outlet-ID') ?? null;
+        if (! $newOutletId && ! $cart->outlet_id && $user) {
+            $token = $user->currentAccessToken();
+            if ($token) {
+                $abilities = $token->abilities ?? [];
+                if (is_string($abilities)) {
+                    $abilities = json_decode($abilities, true) ?? [];
+                }
+                foreach ($abilities as $ability) {
+                    if (str_starts_with((string) $ability, 'outlet:')) {
+                        $newOutletId = substr($ability, 7);
+                        break;
+                    }
+                }
+            }
+            if (! $newOutletId && $user->outlet_id) {
+                $newOutletId = $user->outlet_id;
+            }
+        }
+
+        if (! empty($newOutletId)) {
             if ($cart->outlet_id && (string) $cart->outlet_id !== (string) $newOutletId) {
                 $outletChanged = true;
             }

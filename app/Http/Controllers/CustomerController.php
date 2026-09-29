@@ -190,27 +190,6 @@ class CustomerController extends Controller
     public function checkout(Request $request)
     {
         $user = auth('sanctum')->user();
-        $isStaff = $user && in_array(strtolower(trim($user->role)), ['attendant', 'admin', 'supervisor'], true);
-
-        // Resolve outlet from cart
-        $outletId = null;
-        if ($user) {
-            $cartForOutlet = Cart::where('user_id', $user->id)->first();
-        } else {
-            $cartIdHeader  = $request->header('X-Cart-ID');
-            $cartForOutlet = $cartIdHeader ? Cart::where('session_id', $cartIdHeader)->first() : null;
-        }
-        if ($cartForOutlet && $cartForOutlet->outlet_id) {
-            $outletId = $cartForOutlet->outlet_id;
-            $outlet   = \App\Models\Outlet::find($outletId);
-            if (! $outlet || ! $outlet->is_active) {
-                return response()->json(['message' => 'The selected outlet is not available.'], 422);
-            }
-        }
-
-        if (!$isStaff) {
-            $this->checkAvailabilityHours($request->order_type, $outletId);
-        }
         if ($user) {
             $role = strtolower(trim($user->role));
             if (! in_array($role, ['customer', 'attendant', 'admin'], true)) {
@@ -223,7 +202,18 @@ class CustomerController extends Controller
             $isCustomer = false;
         }
 
+        $isStaff = $user && in_array(strtolower(trim($user->role)), ['attendant', 'admin', 'supervisor'], true);
+
+        // Resolve cart if any
+        if ($user) {
+            $cartForOutlet = Cart::where('user_id', $user->id)->first();
+        } else {
+            $cartIdHeader  = $request->header('X-Cart-ID');
+            $cartForOutlet = $cartIdHeader ? Cart::where('session_id', $cartIdHeader)->first() : null;
+        }
+
         $rules = [
+            'outlet_id'     => 'nullable|uuid|exists:outlets,id',
             'order_type'    => 'required|in:dine,pickup,delivery',
             'payment_type'  => $isAttendant ? 'nullable|in:cash,pos,transfer,gateway,loyalty_points' : 'required|in:cash,pos,transfer,gateway,loyalty_points',
             'items'         => 'nullable|array',
@@ -267,6 +257,41 @@ class CustomerController extends Controller
         }
 
         $validated = $request->validate($rules);
+
+        // Resolve outlet: validated payload > X-Outlet-ID header > cart > token ability > user outlet_id
+        $outletId = $validated['outlet_id']
+            ?? $request->header('X-Outlet-ID')
+            ?? ($cartForOutlet?->outlet_id);
+
+        if (! $outletId && $user) {
+            $token = $user->currentAccessToken();
+            if ($token) {
+                $abilities = $token->abilities ?? [];
+                if (is_string($abilities)) {
+                    $abilities = json_decode($abilities, true) ?? [];
+                }
+                foreach ($abilities as $ability) {
+                    if (str_starts_with((string) $ability, 'outlet:')) {
+                        $outletId = substr($ability, 7);
+                        break;
+                    }
+                }
+            }
+            if (! $outletId && $user->outlet_id) {
+                $outletId = $user->outlet_id;
+            }
+        }
+
+        if ($outletId) {
+            $outlet = \App\Models\Outlet::find($outletId);
+            if (! $outlet || ! $outlet->is_active) {
+                return response()->json(['message' => 'The selected outlet is not available.'], 422);
+            }
+        }
+
+        if (!$isStaff) {
+            $this->checkAvailabilityHours($request->order_type, $outletId);
+        }
 
         return DB::transaction(function () use ($validated, $request, $user, $isAttendant, $isCustomer, $outletId) {
             // Get items from cart or direct
@@ -317,9 +342,8 @@ class CustomerController extends Controller
                     throw new \Exception("Menu {$menu->name} is unavailable.");
                 }
 
-                if ($menu->stock_quantity !== null && $menu->stock_quantity < $item['quantity']) {
-                    // Check outlet stock if outlet context exists
-                    if ($outletId) {
+                if ($outletId) {
+                    if ($menu->stock_quantity !== null) {
                         $outletStock = \App\Models\OutletMenuStock::where('outlet_id', $outletId)
                             ->where('menu_id', $menu->id)
                             ->first();
@@ -327,7 +351,9 @@ class CustomerController extends Controller
                         if ($available < $item['quantity']) {
                             throw new \Exception("Insufficient stock for {$menu->name} at this outlet. Only {$available} left.");
                         }
-                    } else {
+                    }
+                } else {
+                    if ($menu->stock_quantity !== null && $menu->stock_quantity < $item['quantity']) {
                         throw new \Exception("Insufficient stock for {$menu->name}. Only {$menu->stock_quantity} left.");
                     }
                 }
