@@ -56,29 +56,9 @@ class OfflineSyncController extends Controller
         ]);
 
         $user = $request->user();
-        $outlet = $this->outletContext($request);
-        $outletId = $outlet?->id
-            ?? $validated['outlet_id'] ?? null
-            ?? $request->header('X-Outlet-ID');
-
-        if (! $outletId && $user) {
-            $token = $user->currentAccessToken();
-            if ($token) {
-                $abilities = $token->abilities ?? [];
-                if (is_string($abilities)) {
-                    $abilities = json_decode($abilities, true) ?? [];
-                }
-                foreach ($abilities as $ability) {
-                    if (str_starts_with((string) $ability, 'outlet:')) {
-                        $outletId = substr($ability, 7);
-                        break;
-                    }
-                }
-            }
-            if (! $outletId && $user->outlet_id) {
-                $outletId = $user->outlet_id;
-            }
-        }
+        $outlet = (! empty($validated['outlet_id']) ? Outlet::find($validated['outlet_id']) : null)
+            ?? $this->outletContext($request);
+        $outletId = $outlet?->id;
 
         // Idempotency check for batch
         $existingBatch = OfflineSyncBatch::find($validated['batch_id']);

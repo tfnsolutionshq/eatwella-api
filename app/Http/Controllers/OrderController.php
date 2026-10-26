@@ -26,7 +26,7 @@ class OrderController extends Controller
             return $response;
         }
 
-        $query = Order::with(['orderItems.menu', 'orderItems.packaging', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name']);
+        $query = Order::with(['outlet', 'orderItems.menu', 'orderItems.packaging', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name']);
 
         if ($outlet = $this->outletContext($request)) {
             $query->where('outlet_id', $outlet->id);
@@ -34,6 +34,8 @@ class OrderController extends Controller
             $query->whereIn('outlet_id', (array) $request->outlet_ids);
         } elseif ($request->filled('outlet_id')) {
             $query->where('outlet_id', $request->outlet_id);
+        } elseif ($request->header('X-Outlet-ID')) {
+            $query->where('outlet_id', $request->header('X-Outlet-ID'));
         }
 
         if ($request->has('status')) {
@@ -59,7 +61,7 @@ class OrderController extends Controller
             }
         }
 
-        return $order->load(['orderItems.menu', 'orderItems.packaging', 'invoice', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor', 'deliveryZone.city.state', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name']);
+        return $order->load(['outlet', 'orderItems.menu', 'orderItems.packaging', 'invoice', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor', 'deliveryZone.city.state', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name']);
     }
 
     public function update(Request $request, Order $order)
@@ -334,7 +336,7 @@ class OrderController extends Controller
             return $response;
         }
 
-        $query = Order::with(['orderItems.menu', 'orderItems.packaging', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor', 'completedBy', 'invoice']);
+        $query = Order::with(['outlet', 'orderItems.menu', 'orderItems.packaging', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor', 'completedBy', 'invoice']);
 
         $outlet = $this->outletContext($request);
         if ($outlet) {
@@ -589,7 +591,7 @@ class OrderController extends Controller
             return $response;
         }
 
-        $query = Order::with(['orderItems.menu', 'orderItems.packaging', 'invoice', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name']);
+        $query = Order::with(['outlet', 'orderItems.menu', 'orderItems.packaging', 'invoice', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name']);
 
         if ($outlet = $this->outletContext($request)) {
             $query->where('outlet_id', $outlet->id);
@@ -612,7 +614,7 @@ class OrderController extends Controller
             return $response;
         }
 
-        $query = Order::with(['orderItems.menu', 'orderItems.packaging', 'invoice', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name'])
+        $query = Order::with(['outlet', 'orderItems.menu', 'orderItems.packaging', 'invoice', 'user.addresses', 'attendant', 'deliveryAgent', 'assignedBySupervisor', 'review:id,order_id,user_id,rating,comment,created_at', 'review.user:id,name'])
             ->whereNotNull('attendant_id');
 
         if ($request->has('status')) {

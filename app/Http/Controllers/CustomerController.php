@@ -258,29 +258,11 @@ class CustomerController extends Controller
 
         $validated = $request->validate($rules);
 
-        // Resolve outlet: validated payload > X-Outlet-ID header > cart > token ability > user outlet_id
-        $outletId = $validated['outlet_id']
-            ?? $request->header('X-Outlet-ID')
-            ?? ($cartForOutlet?->outlet_id);
-
-        if (! $outletId && $user) {
-            $token = $user->currentAccessToken();
-            if ($token) {
-                $abilities = $token->abilities ?? [];
-                if (is_string($abilities)) {
-                    $abilities = json_decode($abilities, true) ?? [];
-                }
-                foreach ($abilities as $ability) {
-                    if (str_starts_with((string) $ability, 'outlet:')) {
-                        $outletId = substr($ability, 7);
-                        break;
-                    }
-                }
-            }
-            if (! $outletId && $user->outlet_id) {
-                $outletId = $user->outlet_id;
-            }
-        }
+        // Resolve outlet: validated payload > outletContext (header, token ability, user outlet) > cart
+        $outletId = ! empty($validated['outlet_id'])
+            ? $validated['outlet_id']
+            : ($this->outletContext($request)?->id
+                ?? ($cartForOutlet?->outlet_id));
 
         if ($outletId) {
             $outlet = \App\Models\Outlet::find($outletId);
@@ -612,7 +594,7 @@ class CustomerController extends Controller
 
                 return response()->json([
                     'message' => 'Order saved. Awaiting payment.',
-                    'order'   => $order->load('orderItems', 'invoice'),
+                    'order'   => $order->load('outlet', 'orderItems', 'invoice'),
                 ], 201);
             }
 
@@ -798,7 +780,7 @@ class CustomerController extends Controller
 
             $response = [
                 'message' => $responseMessage,
-                'order' => $order->load('orderItems', 'invoice', 'deliveryAgent', 'assignedBySupervisor'),
+                'order' => $order->load('outlet', 'orderItems', 'invoice', 'deliveryAgent', 'assignedBySupervisor'),
             ];
 
             if ($terminalWaiting) {
